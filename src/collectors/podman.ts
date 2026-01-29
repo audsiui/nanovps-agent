@@ -4,7 +4,6 @@ import type { ContainerStat } from '../types';
 
 export async function collectContainerMetrics(): Promise<ContainerStat[]> {
   const socketPath = await getPodmanSocket();
-  
   if (!socketPath) return [];
 
   try {
@@ -13,17 +12,39 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`Podman API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`Podman API Error: ${response.status}`);
     }
 
     const json = await response.json() as any;
     
-    const rawStats = json.Stats || [];
-    const timestamp = Date.now();
+    
+    let rawStats: any[] = [];
 
+    if (Array.isArray(json.Stats)) {
+      rawStats = json.Stats;
+    } 
+    else if (json.Stats && typeof json.Stats === 'object') {
+      rawStats = Object.values(json.Stats);
+    }
+    else if (Array.isArray(json)) {
+      rawStats = json;
+    }
+
+    if (rawStats.length === 0 && json.Stats) {
+      console.log('⚠️ [Debug] Stats structure unexpected:', JSON.stringify(json).substring(0, 100));
+    }
+
+    const timestamp = Date.now();
     const results: ContainerStat[] = [];
 
     for (const s of rawStats) {
+      const idRaw = s.ID || s.id || s.ContainerID || '';
+      const nameRaw = s.Name || s.name || 'unknown';
+      
+      if (!idRaw) continue;
+
+      const id = idRaw.substring(0, 12);
+
       let rxTotal = 0;
       let txTotal = 0;
 
@@ -33,23 +54,40 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
           rxTotal += iface.RxBytes || 0;
           txTotal += iface.TxBytes || 0;
         }
+      } else if (s.NetInput !== undefined) {
+        rxTotal = s.NetInput || 0;
+        txTotal = s.NetOutput || 0;
       }
 
-      const rxRate = calculateRate(`container_${s.ID}_rx`, rxTotal, timestamp);
-      const txRate = calculateRate(`container_${s.ID}_tx`, txTotal, timestamp);
+      const rxRate = calculateRate(`container_${id}_rx`, rxTotal, timestamp);
+      const txRate = calculateRate(`container_${id}_tx`, txTotal, timestamp);
+
+      let cpuVal = 0;
+      if (typeof s.CPU === 'string') {
+        cpuVal = parseFloat(s.CPU.replace('%', ''));
+      } else {
+        cpuVal = s.CPU || 0;
+      }
+
+      const memUsage = s.MemUsage || 0;
+      const memLimit = s.MemLimit || 0;
+      let memPerc = s.MemPerc || 0;
+      if (typeof s.MemPerc === 'string') {
+        memPerc = parseFloat(s.MemPerc.replace('%', ''));
+      }
 
       results.push({
-        id: s.ID.substring(0, 12),
-        name: s.Name || 'unknown',
-        image: s.Image || 'unknown',
+        id: id,
+        name: nameRaw,
+        image: s.Image || s.image || 'unknown',
         state: 'running',
         
-        cpuPercent: s.CPU || 0,
+        cpuPercent: cpuVal,
         
         memory: {
-          usage: s.MemUsage || 0,
-          limit: s.MemLimit || 0,
-          usagePercent: s.MemPerc || 0,
+          usage: memUsage,
+          limit: memLimit,
+          usagePercent: memPerc,
         },
 
         network: {
