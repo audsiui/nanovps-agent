@@ -1,15 +1,13 @@
 import { CONFIG } from '../config';
+import { existsSync } from 'node:fs';
 
 /**
  * 探测 Linux 下 Podman Socket 路径
  */
 export async function findPodmanSocket(): Promise<string> {
   if (CONFIG.podmanSocket) {
-    try {
-      if (await Bun.file(CONFIG.podmanSocket).exists()) {
-        return CONFIG.podmanSocket;
-      }
-    } catch {
+    if (existsSync(CONFIG.podmanSocket)) {
+      return CONFIG.podmanSocket;
     }
     console.warn(`⚠️ Configured socket [${CONFIG.podmanSocket}] not found, switching to auto-detect.`);
   }
@@ -18,26 +16,22 @@ export async function findPodmanSocket(): Promise<string> {
 
   const uid = typeof process.getuid === 'function' ? process.getuid() : -1;
 
-  if (uid >= 1000) {
+  if (uid >= 0) {
     candidates.push(`/run/user/${uid}/podman/podman.sock`);
   }
 
   candidates.push('/run/podman/podman.sock');
 
   for (const path of candidates) {
-    try {
-      if (await Bun.file(path).exists()) {
-        return path;
-      }
-    } catch (e) {
-      continue;
+    if (existsSync(path)) {
+      return path;
     }
   }
 
   return '';
 }
 
-let cachedSocket: string | null = null;
+let cachedSocket: string | null = null; 
 
 export async function getPodmanSocket(): Promise<string> {
   if (cachedSocket !== null) return cachedSocket;
