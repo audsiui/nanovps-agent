@@ -7,15 +7,20 @@ async function main() {
   setInterval(async () => {
     try {
       const data = await collectHostMetrics();
-      
-      console.clear(); 
+
+      console.clear();
       console.log('--- Host Metrics ---');
       console.log(`CPU: ${data.cpu.usagePercent}% (${data.cpu.cores} Cores)`);
-      console.log(`Mem: ${data.memory.usagePercent}% (${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)})`);
-      console.log(`Net: ↓${formatBytes(data.network.rxRate)}/s  ↑${formatBytes(data.network.txRate)}/s`);
+      console.log(
+        `Mem: ${data.memory.usagePercent}% (${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)})`,
+      );
+      console.log(
+        `Net: ↓${formatBytes(data.network.rxRate)}/s (Total: ${formatBytes(data.network.rxTotal)})  ↑${formatBytes(data.network.txRate)}/s (Total: ${formatBytes(data.network.txTotal)})`,
+      );
       console.log(`Uptime: ${Math.floor(data.uptime / 60)} min`);
-      console.table(data.disks.map(d => ({ fs: d.fs, use: d.usePercent + '%' })));
-      
+      console.table(
+        data.disks.map((d) => ({ fs: d.fs, use: d.usePercent + '%' })),
+      );
     } catch (e) {
       console.error(e);
     }
