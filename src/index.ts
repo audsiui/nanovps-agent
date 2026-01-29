@@ -1,38 +1,51 @@
 import { collectHostMetrics } from './collectors/host';
-
-async function main() {
-  console.log('--- 🔵 Phase 2 (Host) Test ---');
-  console.log('Collecting metrics... (Press Ctrl+C to stop)');
-
-  setInterval(async () => {
-    try {
-      const data = await collectHostMetrics();
-
-      console.clear();
-      console.log('--- Host Metrics ---');
-      console.log(`CPU: ${data.cpu.usagePercent}% (${data.cpu.cores} Cores)`);
-      console.log(
-        `Mem: ${data.memory.usagePercent}% (${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)})`,
-      );
-      console.log(
-        `Net: ↓${formatBytes(data.network.rxRate)}/s (Total: ${formatBytes(data.network.rxTotal)})  ↑${formatBytes(data.network.txRate)}/s (Total: ${formatBytes(data.network.txTotal)})`,
-      );
-      console.log(`Uptime: ${Math.floor(data.uptime / 60)} min`);
-      console.table(
-        data.disks.map((d) => ({ fs: d.fs, use: d.usePercent + '%' })),
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  }, 2000);
-}
+import { collectContainerMetrics } from './collectors/podman';
+import os from 'os';
 
 function formatBytes(bytes: number) {
-  if (bytes === 0) return '0 B';
+  if (!bytes) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function main() {
+  console.log(`--- 🚀 Agent Started on ${os.hostname()} ---`);
+  console.log('Press Ctrl+C to stop.\n');
+
+  setInterval(async () => {
+    try {
+      console.clear();
+      const time = new Date().toLocaleTimeString();
+      console.log(`[${time}] Refreshing metrics...`);
+
+      const [host, containers] = await Promise.all([
+        collectHostMetrics(),
+        collectContainerMetrics()
+      ]);
+
+      console.log('\n📦 HOST STATUS');
+      console.log(`CPU: ${host.cpu.usagePercent}% | Mem: ${host.memory.usagePercent}%`);
+      console.log(`Net: ↓${formatBytes(host.network.rxRate)}/s  ↑${formatBytes(host.network.txRate)}/s`);
+
+      console.log(`\n🐳 CONTAINERS (${containers.length} active)`);
+      if (containers.length > 0) {
+        console.table(containers.map(c => ({
+          Name: c.name,
+          CPU: c.cpuPercent.toFixed(1) + '%',
+          Mem: formatBytes(c.memory.usage),
+          'Net ↓': formatBytes(c.network.rxRate) + '/s',
+          'Net ↑': formatBytes(c.network.txRate) + '/s'
+        })));
+      } else {
+        console.log('No running containers.');
+      }
+
+    } catch (e) {
+      console.error(e);
+    }
+  }, 2000);
 }
 
 main();
