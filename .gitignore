@@ -40,3 +40,5 @@ dist/
 out/
 build/
 *.exe
+
+todo.md
