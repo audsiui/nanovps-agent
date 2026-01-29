@@ -29,14 +29,16 @@ async function main() {
       console.log(`CPU: ${host.cpu.usagePercent}% | Mem: ${host.memory.usagePercent}%`);
       console.log(`Net: ↓${formatBytes(host.network.rxRate)}/s  ↑${formatBytes(host.network.txRate)}/s`);
 
-      console.log(`\n🐳 CONTAINERS (${containers.length} active)`);
+    console.log(`\n🐳 CONTAINERS (${containers.length} active)`);
       if (containers.length > 0) {
         console.table(containers.map(c => ({
           Name: c.name,
           CPU: c.cpuPercent.toFixed(1) + '%',
           Mem: formatBytes(c.memory.usage),
           'Net ↓': formatBytes(c.network.rxRate) + '/s',
-          'Net ↑': formatBytes(c.network.txRate) + '/s'
+          'Net ↑': formatBytes(c.network.txRate) + '/s',
+          'Total ↓': formatBytes(c.network.rxTotal),
+          'Total ↑': formatBytes(c.network.txTotal)
         })));
       } else {
         console.log('No running containers.');
