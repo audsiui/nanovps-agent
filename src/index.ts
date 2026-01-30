@@ -56,7 +56,10 @@ async function main() {
   });
 
   console.log('⏳ Waiting for connection...');
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const connected = await wsClient.waitForConnection(10000);
+  if (!connected) {
+    console.warn('⚠️ Connection timeout, proceeding anyway...');
+  }
 
   await loop();
   setInterval(loop, CONFIG.interval);

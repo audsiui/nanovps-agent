@@ -6,18 +6,29 @@ let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 let commandHandler: ((msg: ServerMessage) => void) | null = null;
 let reconnectTimer: Timer | null = null;
-
+let isConnected = false;
+const messageQueue: ClientMessage[] = [];
+const MAX_QUEUE_SIZE = 100;
 
 function scheduleReconnect() {
+  reconnectAttempts++;
   const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-  console.log(`⏳ Reconnecting in ${delay}ms...`);
-  
+  console.log(`⏳ Reconnecting in ${delay}ms... (attempt ${reconnectAttempts})`);
+
   if (reconnectTimer) clearTimeout(reconnectTimer);
-  
+
   reconnectTimer = setTimeout(() => {
-    reconnectAttempts++;
     connect();
   }, delay);
+}
+
+function flushMessageQueue() {
+  while (messageQueue.length > 0 && ws?.readyState === WebSocket.OPEN) {
+    const msg = messageQueue.shift();
+    if (msg) {
+      ws.send(JSON.stringify(msg));
+    }
+  }
 }
 
 /**
@@ -27,6 +38,7 @@ function scheduleReconnect() {
 function handleOpen() {
   console.log('✅ WebSocket Connected!');
   reconnectAttempts = 0;
+  isConnected = true;
 
   const authMsg: AuthPayload = {
     type: 'auth',
@@ -36,9 +48,12 @@ function handleOpen() {
     os: os.type(),
     arch: os.arch()
   };
-  
-  send(authMsg);
+
+  ws?.send(JSON.stringify(authMsg));
   console.log('🔑 Auth packet sent.');
+
+  // 发送队列中的消息
+  flushMessageQueue();
 }
 
 function handleMessage(event: MessageEvent) {
@@ -57,6 +72,7 @@ function handleMessage(event: MessageEvent) {
 
 function handleClose(event: CloseEvent) {
   console.warn(`❌ Disconnected (Code: ${event.code}).`);
+  isConnected = false;
   scheduleReconnect();
 }
 
@@ -74,20 +90,19 @@ export function onCommand(handler: (msg: ServerMessage) => void) {
 
 /**
  * 发送消息
+ * 如果未连接，消息会被暂存到队列，连接成功后自动发送
  */
 export function send(msg: ClientMessage) {
-  if (!ws) {
-    console.error('🚫 Send failed: WebSocket is null');
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
     return;
   }
 
-
-  if (ws.readyState === WebSocket.OPEN) {
-    const data = JSON.stringify(msg);
-    ws.send(data);
-  } else {
-    console.warn(`⚠️ Send skipped. WS State is ${ws.readyState} (Not OPEN)`);
+  // 未连接时加入队列
+  if (messageQueue.length >= MAX_QUEUE_SIZE) {
+    messageQueue.shift(); // 移除最旧的消息
   }
+  messageQueue.push(msg);
 }
 
 /**
@@ -118,8 +133,36 @@ export function connect() {
   }
 }
 
+/**
+ * 等待连接建立
+ * @param timeout 超时时间(ms)
+ * @returns 是否成功连接
+ */
+export function waitForConnection(timeout = 10000): Promise<boolean> {
+  if (isConnected && ws?.readyState === WebSocket.OPEN) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      if (isConnected && ws?.readyState === WebSocket.OPEN) {
+        clearInterval(checkInterval);
+        clearTimeout(timeoutTimer);
+        resolve(true);
+      }
+    }, 100);
+
+    const timeoutTimer = setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve(false);
+    }, timeout);
+  });
+}
+
 export const wsClient = {
   connect,
   send,
-  onCommand
+  onCommand,
+  waitForConnection,
+  get isConnected() { return isConnected; }
 };

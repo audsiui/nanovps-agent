@@ -1,5 +1,17 @@
 
 const previousStates = new Map<string, { bytes: number; timestamp: number }>();
+const MAX_AGE_MS = 5 * 60 * 1000; // 5分钟
+
+/**
+ * 清理过期的状态记录
+ */
+function cleanupOldStates(currentTimestamp: number) {
+  for (const [key, value] of previousStates.entries()) {
+    if (currentTimestamp - value.timestamp > MAX_AGE_MS) {
+      previousStates.delete(key);
+    }
+  }
+}
 
 /**
  * 计算速率 (Bytes per second)
@@ -8,6 +20,11 @@ const previousStates = new Map<string, { bytes: number; timestamp: number }>();
  * @param currentTimestamp 当前时间戳 (ms)
  */
 export function calculateRate(id: string, currentBytes: number, currentTimestamp: number): number {
+  // 每100次调用清理一次过期数据
+  if (Math.random() < 0.01) {
+    cleanupOldStates(currentTimestamp);
+  }
+
   const prev = previousStates.get(id);
 
   previousStates.set(id, { bytes: currentBytes, timestamp: currentTimestamp });

@@ -7,8 +7,8 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
   if (!socketPath) return [];
 
   try {
-    const response = await fetch("http://d/v4.0.0/libpod/containers/stats?stream=false", {
-      unix: socketPath
+    const response = await fetch('http://d/v4.0.0/libpod/containers/stats?stream=false', {
+      unix: socketPath,
     });
 
     if (!response.ok) {
@@ -76,12 +76,23 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
         memPerc = parseFloat(s.MemPerc.replace('%', ''));
       }
 
+      // 解析容器状态
+      let state: ContainerStat['state'] = 'unknown';
+      const rawState = s.State || s.status || s.Status || '';
+      if (typeof rawState === 'string') {
+        const stateLower = rawState.toLowerCase();
+        if (stateLower.includes('running')) state = 'running';
+        else if (stateLower.includes('exited') || stateLower.includes('stopped')) state = 'exited';
+        else if (stateLower.includes('paused')) state = 'paused';
+        else if (stateLower.includes('created')) state = 'created';
+      }
+
       results.push({
         id: id,
         name: nameRaw,
         image: s.Image || s.image || 'unknown',
-        state: 'running',
-        
+        state: state,
+
         cpuPercent: cpuVal,
         
         memory: {

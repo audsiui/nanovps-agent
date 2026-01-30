@@ -15,8 +15,7 @@ async function podmanAction(id: string, action: string) {
 
   const res = await fetch(url, {
     method: 'POST',
-    // @ts-ignore
-    unix: socketPath
+    unix: socketPath,
   });
 
   if (!res.ok) {
@@ -115,8 +114,7 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(containerConfig),
-    // @ts-ignore
-    unix: socketPath
+    unix: socketPath,
   });
 
   if (!createRes.ok) {
@@ -131,8 +129,7 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   const startUrl = `http://d/v4.0.0/libpod/containers/${containerId}/start`;
   const startRes = await fetch(startUrl, {
     method: 'POST',
-    // @ts-ignore
-    unix: socketPath
+    unix: socketPath,
   });
 
   if (!startRes.ok) {
