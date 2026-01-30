@@ -36,23 +36,19 @@ jobs:
       # 5. 执行打包 (调用 package.json 里的 scripts)
       - name: Build for Linux AMD64
         run: bun run build:linux-x64
-        
+
       - name: Build for Linux ARM64
         run: bun run build:linux-arm64
-        
-      - name: Build for Windows AMD64
-        run: bun run build:win-x64
 
       # 6. 生成 Release 并上传附件
       - name: Create Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          # 自动把 dist 目录下的这三个文件上传到 Release
+          # 自动把 dist 目录下的这两个文件上传到 Release
           files: |
             dist/monitor-agent-linux-amd64
             dist/monitor-agent-linux-arm64
-            dist/monitor-agent-windows-amd64.exe
           # 是否设为草稿 (false 表示直接发布)
           draft: false
           # 是否设为预发布 (如果 tag 包含 beta/alpha 自动设为 true，否则 false)
