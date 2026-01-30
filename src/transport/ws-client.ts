@@ -3,7 +3,7 @@ import type { ClientMessage, ServerMessage } from '../types';
 import { getMachineKey } from '../utils/machine-key';
 
 const machineKey = getMachineKey();
-const MAX_RECONNECT_ATTEMPTS = 20;
+const MAX_RECONNECT_ATTEMPTS = 2;
 
 let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
@@ -16,7 +16,7 @@ function scheduleReconnect() {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     console.error(`❌ 已达到最大重连次数 (${MAX_RECONNECT_ATTEMPTS})，放弃连接。`);
     isConnecting = false;
-    return;
+    process.exit(1);
   }
 
   reconnectAttempts++;
@@ -54,11 +54,13 @@ function handleMessage(event: MessageEvent) {
 function handleClose(event: CloseEvent) {
   console.warn(`❌ 连接断开 (代码: ${event.code})`);
   isConnected = false;
+  isConnecting = false;
   scheduleReconnect();
 }
 
 function handleError(event: Event) {
   console.error('⚠️ WebSocket 错误');
+  isConnecting = false;
 }
 
 /**
@@ -76,8 +78,10 @@ export function send(msg: ClientMessage) {
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
     return;
+  }else{
+    console.error('WebSocket 未连接，无法发送消息');
   }
-  throw new Error('WebSocket is not connected');
+
 }
 
 /**
@@ -116,36 +120,9 @@ export function connect() {
   }
 }
 
-/**
- * 等待连接建立
- * @param timeout 超时时间(ms)
- * @returns 是否成功连接
- */
-export function waitForConnection(timeout = 10000): Promise<boolean> {
-  if (isConnected && ws?.readyState === WebSocket.OPEN) {
-    return Promise.resolve(true);
-  }
-
-  return new Promise((resolve) => {
-    const checkInterval = setInterval(() => {
-      if (isConnected && ws?.readyState === WebSocket.OPEN) {
-        clearInterval(checkInterval);
-        clearTimeout(timeoutTimer);
-        resolve(true);
-      }
-    }, 100);
-
-    const timeoutTimer = setTimeout(() => {
-      clearInterval(checkInterval);
-      resolve(false);
-    }, timeout);
-  });
-}
-
 export const wsClient = {
   connect,
   send,
   onCommand,
-  waitForConnection,
   get isConnected() { return isConnected; }
 };

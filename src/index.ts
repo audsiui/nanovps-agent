@@ -6,6 +6,11 @@ import type { ReportPayload } from './types';
 import { handleServerCommand } from './handlers/cmd-handler';
 
 async function loop() {
+  // 如果未连接，跳过本次上报
+  if (!wsClient.isConnected) {
+    return;
+  }
+
   try {
     const [host, containers] = await Promise.all([
       collectHostMetrics().catch(e => {
@@ -44,22 +49,16 @@ async function loop() {
 
 async function main() {
   console.log(`🚀 Agent 启动中... [ID: ${CONFIG.agentName}]`);
-  
+
   wsClient.connect();
 
   wsClient.onCommand(async (cmd) => {
     const response = await handleServerCommand(cmd);
-    
+
     wsClient.send(response);
-    
+
     console.log(`📤 命令 ${cmd.id} 响应已发送: ${response.success ? '成功' : '失败'}`);
   });
-
-  console.log('⏳ 等待连接...');
-  const connected = await wsClient.waitForConnection(10000);
-  if (!connected) {
-    console.warn('⚠️ 连接超时，继续运行...');
-  }
 
   await loop();
   setInterval(loop, CONFIG.interval);
