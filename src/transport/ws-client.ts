@@ -1,19 +1,27 @@
 import { CONFIG } from '../config';
-import type { AuthPayload, ClientMessage, ServerMessage } from '../types';
-import os from 'os';
+import type { ClientMessage, ServerMessage } from '../types';
+import { getMachineKey } from '../utils/machine-key';
+
+const machineKey = getMachineKey();
+const MAX_RECONNECT_ATTEMPTS = 20;
 
 let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 let commandHandler: ((msg: ServerMessage) => void) | null = null;
 let reconnectTimer: Timer | null = null;
 let isConnected = false;
-const messageQueue: ClientMessage[] = [];
-const MAX_QUEUE_SIZE = 100;
+let isConnecting = false;
 
 function scheduleReconnect() {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error(`❌ Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+    isConnecting = false;
+    return;
+  }
+
   reconnectAttempts++;
   const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-  console.log(`⏳ Reconnecting in ${delay}ms... (attempt ${reconnectAttempts})`);
+  console.log(`⏳ Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
 
   if (reconnectTimer) clearTimeout(reconnectTimer);
 
@@ -22,44 +30,17 @@ function scheduleReconnect() {
   }, delay);
 }
 
-function flushMessageQueue() {
-  while (messageQueue.length > 0 && ws?.readyState === WebSocket.OPEN) {
-    const msg = messageQueue.shift();
-    if (msg) {
-      ws.send(JSON.stringify(msg));
-    }
-  }
-}
-
-/**
- * 处理WebSocket连接成功后的回调函数
- * 当WebSocket连接建立时，会执行此函数
- */
 function handleOpen() {
   console.log('✅ WebSocket Connected!');
   reconnectAttempts = 0;
   isConnected = true;
-
-  const authMsg: AuthPayload = {
-    type: 'auth',
-    token: CONFIG.token,
-    agentId: CONFIG.agentName,
-    version: '1.0.0',
-    os: os.type(),
-    arch: os.arch()
-  };
-
-  ws?.send(JSON.stringify(authMsg));
-  console.log('🔑 Auth packet sent.');
-
-  // 发送队列中的消息
-  flushMessageQueue();
+  isConnecting = false;
 }
 
 function handleMessage(event: MessageEvent) {
   try {
     const msg = JSON.parse(event.data.toString()) as ServerMessage;
-    
+
     if (msg.type === 'cmd' && commandHandler) {
       commandHandler(msg);
     } else {
@@ -80,7 +61,6 @@ function handleError(event: Event) {
   console.error('⚠️ WebSocket Error');
 }
 
-
 /**
  * 注册指令回调
  */
@@ -90,26 +70,24 @@ export function onCommand(handler: (msg: ServerMessage) => void) {
 
 /**
  * 发送消息
- * 如果未连接，消息会被暂存到队列，连接成功后自动发送
+ * 必须确保连接成功后再调用，否则抛出错误
  */
 export function send(msg: ClientMessage) {
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
     return;
   }
-
-  // 未连接时加入队列
-  if (messageQueue.length >= MAX_QUEUE_SIZE) {
-    messageQueue.shift(); // 移除最旧的消息
-  }
-  messageQueue.push(msg);
+  throw new Error('WebSocket is not connected');
 }
 
 /**
  * 启动连接
  */
 export function connect() {
+  if (isConnected || isConnecting) return;
+
   console.log(`🔌 Connecting to ${CONFIG.serverUrl}...`);
+  isConnecting = true;
 
   try {
     if (ws) {
@@ -120,8 +98,12 @@ export function connect() {
       ws.close();
     }
 
-    ws = new WebSocket(CONFIG.serverUrl);
-    
+    // 构建带认证参数的 URL
+    const wsUrl = new URL(CONFIG.serverUrl);
+    wsUrl.searchParams.set('key', machineKey);
+
+    ws = new WebSocket(wsUrl.toString());
+
     ws.onopen = handleOpen;
     ws.onmessage = handleMessage;
     ws.onclose = handleClose;
@@ -129,6 +111,7 @@ export function connect() {
 
   } catch (e) {
     console.error('Connection failed immediately:', e);
+    isConnecting = false;
     scheduleReconnect();
   }
 }

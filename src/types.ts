@@ -83,12 +83,13 @@ export interface ContainerStat {
 
 // ------ 3.1 Agent 发给 Server 的消息 ------
 
-/** * 鉴权/握手包 
+/** * 鉴权/握手包
  * 连接建立后发送的第一条消息
  */
 export interface AuthPayload {
   type: 'auth';
   token: string;
+  machineKey: string;  // 机器指纹 key，用于唯一标识该 Agent 实例
   agentId: string;
   version: string;     // Agent 版本，例如 "1.0.0"
   os: string;          // 例如 "Linux", "Windows_NT"
