@@ -149,8 +149,6 @@ export type AgentAction =
   
   // --- 系统运维类 (NEW) ---
   | 'sys:exec'         // 执行通用 Shell 命令 (最强，但也最危险)
-  | 'sys:file:write'   // 写文件 (比如下发配置文件 /etc/nginx/nginx.conf)
-  | 'sys:service:ctrl' // systemctl 控制 (start/stop/restart)
   
   // --- Agent 自身 ---
   | 'agent:upgrade'
@@ -168,18 +166,6 @@ export interface CmdSysExec extends ServerCommand {
   };
 }
 
-/**
- * 文件写入指令 (可选)
- * 用于：修改配置文件
- */
-export interface CmdFileWrite extends ServerCommand {
-  action: 'sys:file:write';
-  payload: {
-    path: string;      // 例如: "/etc/iptables/rules.v4"
-    content: string;   // 文件内容
-    mode?: string;     // 权限 例如 "0644"
-  };
-}
 
 // 更新消息总集类型
 export type ServerMessage = ServerCommand;
