@@ -1,10 +1,13 @@
 // src/handlers/cmd.ts
 import type { ServerCommand, CommandResponsePayload } from '../types';
 import * as podman from '../actions/podman';
+import * as net from '../actions/net';
 
-export async function handleServerCommand(cmd: ServerCommand): Promise<CommandResponsePayload> {
+export async function handleServerCommand(
+  cmd: ServerCommand,
+): Promise<CommandResponsePayload> {
   console.log(`🤖 正在处理命令: [${cmd.action}] (ID: ${cmd.id})`);
-  
+
   let success = false;
   let message = '';
   let data: any = null;
@@ -32,13 +35,15 @@ export async function handleServerCommand(cmd: ServerCommand): Promise<CommandRe
         await podman.startContainer(cmd.payload.containerId);
         message = `Container ${cmd.payload.containerId} started`;
         break;
-
+      case 'net:forward':
+        await net.setupPortForwarding(cmd.payload);
+        message = `Port forwarding set: :${cmd.payload.port} -> ${cmd.payload.targetIp}:${cmd.payload.targetPort || cmd.payload.port} (${cmd.payload.protocol})`;
+        break;
       default:
         throw new Error(`Unknown action type: ${cmd.action}`);
     }
 
     success = true;
-
   } catch (e: any) {
     console.error(`❌ 命令执行失败:`, e);
     success = false;
@@ -51,6 +56,6 @@ export async function handleServerCommand(cmd: ServerCommand): Promise<CommandRe
     refId: cmd.id,
     success,
     message,
-    data
+    data,
   };
 }

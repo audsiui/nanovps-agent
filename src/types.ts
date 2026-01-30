@@ -138,29 +138,10 @@ export type AgentAction =
 
   // --- Agent 自身 ---
   | 'agent:upgrade'
-  | 'agent:restart';
-/**
- * 创建容器指令
- * 对应: podman run -d --name xxx --hostname xxx --memory xxx --cpus xxx -p xxx:22 image
- */
-export interface CmdContainerCreate extends ServerCommand {
-  action: 'container:create';
-  payload: {
-    name: string;           // 容器名称
-    image: string;          // 镜像名称 (e.g., "vps-alpine")
-    hostname?: string;      // 容器内 hostname
-    memory?: string;        // 内存限制 (e.g., "128m", "1g")
-    memorySwap?: string;    // 内存+swap 限制 (e.g., "256m", "2g")
-    storageOpt?: string;    // 存储大小限制 (e.g., "size=2G")
-    cpus?: number;          // CPU 核心数
-    sshPort?: number;       // 映射到容器 22 端口的外部端口
-    network?: string;       // 网络名称 (e.g., "vps-net")
-    capAdd?: string[];      // 添加的 Linux capabilities (e.g., ["SYS_ADMIN"])
-    userns?: string;        // 用户命名空间 (e.g., "1001")
-    restartPolicy?: string; // 重启策略 (e.g., "always")
-  };
-}
+  | 'agent:restart'
+
+  // --- 网络类 ---
+  | 'net:forward';
 
 
-// 更新消息总集类型
 export type ServerMessage = ServerCommand;
