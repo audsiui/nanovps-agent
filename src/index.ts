@@ -1,53 +1,72 @@
+// src/index.ts
+import { CONFIG } from './config';
+import { wsClient } from './transport/ws-client';
 import { collectHostMetrics } from './collectors/host';
 import { collectContainerMetrics } from './collectors/podman';
+import type { ReportPayload } from './types';
 import os from 'os';
 
-function formatBytes(bytes: number) {
-  if (!bytes) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+async function loop() {
+  try {
+    // 1. 并行采集
+    // 生产级容错：即使采集报错，也不能让主循环挂掉
+    const [host, containers] = await Promise.all([
+      collectHostMetrics().catch(e => {
+        console.error('Host Collector Error:', e);
+        return null;
+      }),
+      collectContainerMetrics().catch(e => {
+        console.error('Podman Collector Error:', e);
+        return [];
+      })
+    ]);
+
+    if (!host) return; // 主机数据都拿不到，本次放弃上报
+
+    // 2. 组装数据包
+    const payload: ReportPayload = {
+      type: 'report',
+      data: {
+        agentId: CONFIG.agentName,
+        timestamp: Date.now(),
+        host: host,
+        containers: containers,
+        // 如果容器列表是空的，并且 Socket 也没找到，可以在这里加个 errors 标记（可选）
+      }
+    };
+
+    // 3. 发送
+    // 这里不需要判断 isConnected，client 内部会处理，如果没连上就发不出去（丢弃）
+    wsClient.send(payload);
+
+    // 4. 本地日志 (可选，证明活着)
+    const time = new Date().toLocaleTimeString();
+    const cpu = host.cpu.usagePercent.toFixed(1);
+    const mem = host.memory.usagePercent.toFixed(1);
+    console.log(`[${time}] Sent Report | CPU: ${cpu}% | Mem: ${mem}% | Containers: ${containers.length}`);
+
+  } catch (e) {
+    console.error('Main Loop Critical Error:', e);
+  }
 }
 
 async function main() {
-  console.log(`--- 🚀 Agent Started on ${os.hostname()} ---`);
-  console.log('Press Ctrl+C to stop.\n');
+  console.log(`🚀 Bun Agent Starting... [ID: ${CONFIG.agentName}]`);
+  
+  // 1. 启动 WebSocket 连接
+  wsClient.connect();
 
-  setInterval(async () => {
-    try {
-      console.clear();
-      const time = new Date().toLocaleTimeString();
-      console.log(`[${time}] Refreshing metrics...`);
+  // 2. 注册指令处理器 (预留)
+  wsClient.onCommand((cmd) => {
+    console.log('🤖 Received Command:', cmd);
+    // 下一步我们会在这里调用 handlers
+  });
 
-      const [host, containers] = await Promise.all([
-        collectHostMetrics(),
-        collectContainerMetrics()
-      ]);
+  // 3. 立即执行一次采集
+  await loop();
 
-      console.log('\n📦 HOST STATUS');
-      console.log(`CPU: ${host.cpu.usagePercent}% | Mem: ${host.memory.usagePercent}%`);
-      console.log(`Net: ↓${formatBytes(host.network.rxRate)}/s  ↑${formatBytes(host.network.txRate)}/s`);
-
-    console.log(`\n🐳 CONTAINERS (${containers.length} active)`);
-      if (containers.length > 0) {
-        console.table(containers.map(c => ({
-          Name: c.name,
-          CPU: c.cpuPercent.toFixed(1) + '%',
-          Mem: formatBytes(c.memory.usage),
-          'Net ↓': formatBytes(c.network.rxRate) + '/s',
-          'Net ↑': formatBytes(c.network.txRate) + '/s',
-          'Total ↓': formatBytes(c.network.rxTotal),
-          'Total ↑': formatBytes(c.network.txTotal)
-        })));
-      } else {
-        console.log('No running containers.');
-      }
-
-    } catch (e) {
-      console.error(e);
-    }
-  }, 2000);
+  // 4. 启动定时器
+  setInterval(loop, CONFIG.interval);
 }
 
 main();
