@@ -136,25 +136,9 @@ export type AgentAction =
   | 'container:kill'
   | 'container:remove'
 
-  // --- 系统运维类 (NEW) ---
-  | 'sys:exec'         // 执行通用 Shell 命令 (最强，但也最危险)
-
   // --- Agent 自身 ---
   | 'agent:upgrade'
   | 'agent:restart';
-/**
- * 通用 Shell 执行指令
- * 用于：iptables, cat, ls, 自定义脚本等
- */
-export interface CmdSysExec extends ServerCommand {
-  action: 'sys:exec';
-  payload: {
-    command: string;   // 例如: "iptables -L -n" 或 "reboot"
-    timeout?: number;  // 超时时间，防止脚本卡死
-    cwd?: string;      // 执行目录
-  };
-}
-
 /**
  * 创建容器指令
  * 对应: podman run -d --name xxx --hostname xxx --memory xxx --cpus xxx -p xxx:22 image

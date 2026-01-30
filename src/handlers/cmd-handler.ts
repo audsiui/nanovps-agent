@@ -1,6 +1,5 @@
 // src/handlers/cmd.ts
 import type { ServerCommand, CommandResponsePayload } from '../types';
-import * as sys from '../actions/sys';
 import * as podman from '../actions/podman';
 
 export async function handleServerCommand(cmd: ServerCommand): Promise<CommandResponsePayload> {
@@ -12,13 +11,6 @@ export async function handleServerCommand(cmd: ServerCommand): Promise<CommandRe
 
   try {
     switch (cmd.action) {
-      // --- 系统类 ---
-      case 'sys:exec':
-        // payload: { command: "ls -la" }
-        data = await sys.execCommand(cmd.payload.command, cmd.payload.timeout);
-        message = 'Command executed';
-        break;
-
       // --- 容器类 ---
       case 'container:create':
         data = await podman.createContainer(cmd.payload);
