@@ -9,7 +9,7 @@ export async function findPodmanSocket(): Promise<string> {
     if (existsSync(CONFIG.podmanSocket)) {
       return CONFIG.podmanSocket;
     }
-    console.warn(`⚠️ Configured socket [${CONFIG.podmanSocket}] not found, switching to auto-detect.`);
+    console.warn(`⚠️ 配置的 socket [${CONFIG.podmanSocket}] 未找到，切换到自动检测。`);
   }
 
   const candidates: string[] = [];
@@ -39,9 +39,9 @@ export async function getPodmanSocket(): Promise<string> {
   cachedSocket = await findPodmanSocket();
   
   if (cachedSocket) {
-    console.log(`✅ [Podman] Socket connected at: ${cachedSocket}`);
+    console.log(`✅ [Podman] Socket 已连接: ${cachedSocket}`);
   } else {
-    console.warn(`🔸 [Podman] Socket not found (Normal on Windows).`);
+    console.warn(`🔸 [Podman] 未找到 Socket（Windows 上属于正常）。`);
   }
   
   return cachedSocket;

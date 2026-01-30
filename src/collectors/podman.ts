@@ -31,7 +31,7 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
     }
 
     if (rawStats.length === 0 && json.Stats) {
-      console.log('⚠️ [Debug] Stats structure unexpected:', JSON.stringify(json).substring(0, 100));
+      console.log('⚠️ [调试] Stats 结构异常:', JSON.stringify(json).substring(0, 100));
     }
 
     const timestamp = Date.now();
@@ -113,7 +113,7 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
     return results;
 
   } catch (error: any) {
-    console.warn(`⚠️ [Podman Collector] Failed: ${error.message}`);
+    console.warn(`⚠️ [Podman 采集器] 失败: ${error.message}`);
     return [];
   }
 }

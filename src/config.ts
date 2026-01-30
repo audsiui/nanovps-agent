@@ -8,7 +8,7 @@ const DEFAULT_URL = 'ws://127.0.0.1:3000/ws';
 
 export function loadConfig(): AgentConfig {
   if (!env.SERVER_TOKEN) {
-    console.error('❌ [FATAL] SERVER_TOKEN is missing in .env file.');
+    console.error('❌ [致命错误] .env 文件中缺少 SERVER_TOKEN。');
     process.exit(1);
   }
 

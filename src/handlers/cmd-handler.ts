@@ -4,7 +4,7 @@ import * as sys from '../actions/sys';
 import * as podman from '../actions/podman';
 
 export async function handleServerCommand(cmd: ServerCommand): Promise<CommandResponsePayload> {
-  console.log(`🤖 Processing command: [${cmd.action}] (ID: ${cmd.id})`);
+  console.log(`🤖 正在处理命令: [${cmd.action}] (ID: ${cmd.id})`);
   
   let success = false;
   let message = '';
@@ -48,7 +48,7 @@ export async function handleServerCommand(cmd: ServerCommand): Promise<CommandRe
     success = true;
 
   } catch (e: any) {
-    console.error(`❌ Command failed:`, e);
+    console.error(`❌ 命令执行失败:`, e);
     success = false;
     message = e.message || 'Internal Agent Error';
   }

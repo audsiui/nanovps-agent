@@ -9,11 +9,11 @@ async function loop() {
   try {
     const [host, containers] = await Promise.all([
       collectHostMetrics().catch(e => {
-        console.error('Host Collector Error:', e);
+        console.error('主机采集器错误:', e);
         return null;
       }),
       collectContainerMetrics().catch(e => {
-        console.error('Podman Collector Error:', e);
+        console.error('容器采集器错误:', e);
         return [];
       })
     ]);
@@ -35,15 +35,15 @@ async function loop() {
     const time = new Date().toLocaleTimeString();
     const cpu = host.cpu.usagePercent.toFixed(1);
     const mem = host.memory.usagePercent.toFixed(1);
-    console.log(`[${time}] Sent Report | CPU: ${cpu}% | Mem: ${mem}% | Containers: ${containers.length}`);
+    console.log(`[${time}] 上报成功 | CPU: ${cpu}% | 内存: ${mem}% | 容器数: ${containers.length}`);
 
   } catch (e) {
-    console.error('Main Loop Critical Error:', e);
+    console.error('主循环严重错误:', e);
   }
 }
 
 async function main() {
-  console.log(`🚀 Bun Agent Starting... [ID: ${CONFIG.agentName}]`);
+  console.log(`🚀 Agent 启动中... [ID: ${CONFIG.agentName}]`);
   
   wsClient.connect();
 
@@ -52,13 +52,13 @@ async function main() {
     
     wsClient.send(response);
     
-    console.log(`📤 Sent response for cmd ${cmd.id}: ${response.success ? 'OK' : 'FAIL'}`);
+    console.log(`📤 命令 ${cmd.id} 响应已发送: ${response.success ? '成功' : '失败'}`);
   });
 
-  console.log('⏳ Waiting for connection...');
+  console.log('⏳ 等待连接...');
   const connected = await wsClient.waitForConnection(10000);
   if (!connected) {
-    console.warn('⚠️ Connection timeout, proceeding anyway...');
+    console.warn('⚠️ 连接超时，继续运行...');
   }
 
   await loop();

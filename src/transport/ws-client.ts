@@ -14,14 +14,14 @@ let isConnecting = false;
 
 function scheduleReconnect() {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error(`❌ Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+    console.error(`❌ 已达到最大重连次数 (${MAX_RECONNECT_ATTEMPTS})，放弃连接。`);
     isConnecting = false;
     return;
   }
 
   reconnectAttempts++;
   const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-  console.log(`⏳ Reconnecting in ${delay}ms... (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+  console.log(`⏳ ${delay}ms 后重连... (第 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} 次尝试)`);
 
   if (reconnectTimer) clearTimeout(reconnectTimer);
 
@@ -31,7 +31,7 @@ function scheduleReconnect() {
 }
 
 function handleOpen() {
-  console.log('✅ WebSocket Connected!');
+  console.log('✅ WebSocket 已连接！');
   reconnectAttempts = 0;
   isConnected = true;
   isConnecting = false;
@@ -44,21 +44,21 @@ function handleMessage(event: MessageEvent) {
     if (msg.type === 'cmd' && commandHandler) {
       commandHandler(msg);
     } else {
-      console.log('📩 Received unknown message:', msg);
+      console.log('📩 收到未知消息:', msg);
     }
   } catch (e) {
-    console.error('Failed to parse server message:', event.data);
+    console.error('解析服务器消息失败:', event.data);
   }
 }
 
 function handleClose(event: CloseEvent) {
-  console.warn(`❌ Disconnected (Code: ${event.code}).`);
+  console.warn(`❌ 连接断开 (代码: ${event.code})`);
   isConnected = false;
   scheduleReconnect();
 }
 
 function handleError(event: Event) {
-  console.error('⚠️ WebSocket Error');
+  console.error('⚠️ WebSocket 错误');
 }
 
 /**
@@ -86,7 +86,7 @@ export function send(msg: ClientMessage) {
 export function connect() {
   if (isConnected || isConnecting) return;
 
-  console.log(`🔌 Connecting to ${CONFIG.serverUrl}...`);
+  console.log(`🔌 正在连接到 ${CONFIG.serverUrl}...`);
   isConnecting = true;
 
   try {
@@ -110,7 +110,7 @@ export function connect() {
     ws.onerror = handleError;
 
   } catch (e) {
-    console.error('Connection failed immediately:', e);
+    console.error('连接立即失败:', e);
     isConnecting = false;
     scheduleReconnect();
   }
