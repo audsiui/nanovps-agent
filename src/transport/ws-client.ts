@@ -25,12 +25,11 @@ function scheduleReconnect() {
  * 当WebSocket连接建立时，会执行此函数
  */
 function handleOpen() {
-  console.log('✅ WebSocket Connected!'); // 打印连接成功的日志
-  reconnectAttempts = 0; // 重置重连尝试次数为0
+  console.log('✅ WebSocket Connected!');
+  reconnectAttempts = 0;
 
-  // 构建认证消息对象
   const authMsg: AuthPayload = {
-    type: 'auth', // 消息类型为认证
+    type: 'auth',
     token: CONFIG.token,
     agentId: CONFIG.agentName,
     version: '1.0.0',
@@ -77,8 +76,17 @@ export function onCommand(handler: (msg: ServerMessage) => void) {
  * 发送消息
  */
 export function send(msg: ClientMessage) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(msg));
+  if (!ws) {
+    console.error('🚫 Send failed: WebSocket is null');
+    return;
+  }
+
+
+  if (ws.readyState === WebSocket.OPEN) {
+    const data = JSON.stringify(msg);
+    ws.send(data);
+  } else {
+    console.warn(`⚠️ Send skipped. WS State is ${ws.readyState} (Not OPEN)`);
   }
 }
 
