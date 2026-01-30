@@ -20,6 +20,12 @@ export async function handleServerCommand(cmd: ServerCommand): Promise<CommandRe
         break;
 
       // --- 容器类 ---
+      case 'container:create':
+        data = await podman.createContainer(cmd.payload);
+        message = `Container ${cmd.payload.name} created and started`;
+        break;
+
+      // --- 容器类 ---
       case 'container:restart':
         await podman.restartContainer(cmd.payload.containerId);
         message = `Container ${cmd.payload.containerId} restarted`;

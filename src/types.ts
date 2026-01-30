@@ -139,17 +139,18 @@ export interface ServerCommand {
 }
 
 // 具体的动作定义 (Discriminated Union 增强类型安全)
-export type AgentAction = 
+export type AgentAction =
   // --- 容器类 ---
+  | 'container:create'  // 创建容器
   | 'container:start'
   | 'container:stop'
   | 'container:restart'
   | 'container:kill'
   | 'container:remove'
-  
+
   // --- 系统运维类 (NEW) ---
   | 'sys:exec'         // 执行通用 Shell 命令 (最强，但也最危险)
-  
+
   // --- Agent 自身 ---
   | 'agent:upgrade'
   | 'agent:restart';
@@ -163,6 +164,28 @@ export interface CmdSysExec extends ServerCommand {
     command: string;   // 例如: "iptables -L -n" 或 "reboot"
     timeout?: number;  // 超时时间，防止脚本卡死
     cwd?: string;      // 执行目录
+  };
+}
+
+/**
+ * 创建容器指令
+ * 对应: podman run -d --name xxx --hostname xxx --memory xxx --cpus xxx -p xxx:22 image
+ */
+export interface CmdContainerCreate extends ServerCommand {
+  action: 'container:create';
+  payload: {
+    name: string;           // 容器名称
+    image: string;          // 镜像名称 (e.g., "vps-alpine")
+    hostname?: string;      // 容器内 hostname
+    memory?: string;        // 内存限制 (e.g., "128m", "1g")
+    memorySwap?: string;    // 内存+swap 限制 (e.g., "256m", "2g")
+    storageOpt?: string;    // 存储大小限制 (e.g., "size=2G")
+    cpus?: number;          // CPU 核心数
+    sshPort?: number;       // 映射到容器 22 端口的外部端口
+    network?: string;       // 网络名称 (e.g., "vps-net")
+    capAdd?: string[];      // 添加的 Linux capabilities (e.g., ["SYS_ADMIN"])
+    userns?: string;        // 用户命名空间 (e.g., "1001")
+    restartPolicy?: string; // 重启策略 (e.g., "always")
   };
 }
 
