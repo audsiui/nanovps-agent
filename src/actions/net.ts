@@ -84,7 +84,68 @@ export async function setupPortForwarding(opts: ForwardOptions) {
       } catch (err: any) {
         console.error(`⚠️ 设置规则失败 [${tool}/${proto}]: ${err.message}`);
         // 这里可以选择是否 throw，或者继续执行下一个协议
-        throw err; 
+        throw err;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * 删除单条转发规则
+ */
+async function removeRule(bin: 'iptables' | 'ip6tables', protocol: string, port: number, targetIp: string, targetPort: number) {
+  const comment = `agent-fwd-${port}-${protocol}`;
+
+  // 1. 删除 DNAT 规则
+  await runNetCommand(bin, [
+    '-t', 'nat',
+    '-D', 'PREROUTING',
+    '-p', protocol,
+    '--dport', String(port),
+    '-j', 'DNAT',
+    '--to-destination', bin === 'ip6tables' ? `[${targetIp}]:${targetPort}` : `${targetIp}:${targetPort}`,
+    '-m', 'comment', '--comment', comment
+  ]);
+
+  // 2. 删除 FORWARD 规则
+  await runNetCommand(bin, [
+    '-D', 'FORWARD',
+    '-p', protocol,
+    '-d', targetIp,
+    '--dport', String(targetPort),
+    '-j', 'ACCEPT',
+    '-m', 'comment', '--comment', comment
+  ]);
+}
+
+/**
+ * 入口函数：移除端口转发规则
+ */
+export async function removePortForwarding(opts: ForwardOptions) {
+  const { port, targetIp, ipType } = opts;
+  const targetPort = opts.targetPort || port;
+
+  // 1. 确定协议列表
+  const protocols = opts.protocol === 'all' ? ['tcp', 'udp'] : [opts.protocol];
+
+  // 2. 确定 IP 工具列表
+  const tools: ('iptables' | 'ip6tables')[] = [];
+  if (ipType === 'ipv4' || ipType === 'all') tools.push('iptables');
+  if (ipType === 'ipv6' || ipType === 'all') tools.push('ip6tables');
+
+  // 3. 双重循环执行删除
+  for (const tool of tools) {
+    for (const proto of protocols) {
+      try {
+        await removeRule(tool, proto, port, targetIp, targetPort);
+      } catch (err: any) {
+        console.error(`⚠️ 删除规则失败 [${tool}/${proto}]: ${err.message}`);
+        // 忽略不存在的规则错误
+        if (!err.message?.includes('No chain/target/match by that name')) {
+          throw err;
+        }
       }
     }
   }

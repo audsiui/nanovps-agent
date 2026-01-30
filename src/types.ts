@@ -141,7 +141,8 @@ export type AgentAction =
   | 'agent:restart'
 
   // --- 网络类 ---
-  | 'net:forward';
+  | 'net:forward'
+  | 'net:unforward';
 
 
 export type ServerMessage = ServerCommand;

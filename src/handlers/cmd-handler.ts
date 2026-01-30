@@ -39,6 +39,10 @@ export async function handleServerCommand(
         await net.setupPortForwarding(cmd.payload);
         message = `Port forwarding set: :${cmd.payload.port} -> ${cmd.payload.targetIp}:${cmd.payload.targetPort || cmd.payload.port} (${cmd.payload.protocol})`;
         break;
+      case 'net:unforward':
+        await net.removePortForwarding(cmd.payload);
+        message = `Port forwarding removed: :${cmd.payload.port} -> ${cmd.payload.targetIp}:${cmd.payload.targetPort || cmd.payload.port} (${cmd.payload.protocol})`;
+        break;
       default:
         throw new Error(`Unknown action type: ${cmd.action}`);
     }
