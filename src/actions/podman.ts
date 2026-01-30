@@ -38,9 +38,12 @@ export interface CreateContainerOptions {
   name: string;
   image: string;
   hostname?: string;
-  memory?: string;
-  memorySwap?: string;
+  /** 内存限制，单位：字节 (如 512MB = 536870912) */
+  memory?: number;
+  /** 内存+Swap 限制，单位：字节。-1 表示不限制 swap */
+  memorySwap?: number;
   storageOpt?: string;
+  /** CPU 核心数限制 (如 0.5, 1, 2) */
   cpus?: number;
   sshPort?: number;
   network?: string;
@@ -61,21 +64,20 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     restart_policy: options.restartPolicy || 'always',
   };
 
-  // 资源限制
+  // 资源限制 (直接使用服务端传来的数值)
   const resources: any = {};
   if (options.memory) {
-    // 转换 "128m" -> 134217728 bytes
-    resources.memory = parseMemorySize(options.memory);
+    resources.memory = options.memory;
   }
   if (options.memorySwap) {
-    resources.memory_swap = parseMemorySize(options.memorySwap);
+    resources.memory_swap = options.memorySwap;
   }
   if (options.storageOpt) {
     resources.storage_opt = [options.storageOpt];
   }
   if (options.cpus) {
     resources.cpu_period = 100000;
-    resources.cpu_quota = options.cpus * 100000;
+    resources.cpu_quota = Math.floor(options.cpus * 100000);
   }
   if (Object.keys(resources).length > 0) {
     containerConfig.resource_limits = resources;
@@ -142,31 +144,3 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   };
 }
 
-/**
- * 解析内存大小字符串
- * "128m" -> 134217728
- * "1g" -> 1073741824
- */
-function parseMemorySize(size: string): number {
-  const match = size.toLowerCase().match(/^(\d+(?:\.\d+)?)\s*([kmg]?)b?$/);
-  if (!match) {
-    throw new Error(`Invalid memory size format: ${size}`);
-  }
-
-  const value = parseFloat(match[1]);
-  const unit = match[2] ?? 'b';
-
-  const multipliers: Record<string, number> = {
-    'b': 1,
-    'k': 1024,
-    'm': 1024 * 1024,
-    'g': 1024 * 1024 * 1024,
-  };
-
-  const multiplier = multipliers[unit];
-  if (!multiplier) {
-    throw new Error(`Unknown memory unit: ${unit}`);
-  }
-
-  return Math.floor(value * multiplier);
-}
