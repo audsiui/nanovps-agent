@@ -47,8 +47,8 @@ jobs:
         with:
           # 自动把 dist 目录下的这两个文件上传到 Release
           files: |
-            dist/monitor-agent-linux-amd64
-            dist/monitor-agent-linux-arm64
+            dist/nanovps-agent-linux-amd64
+            dist/nanovps-agent-linux-arm64
           # 是否设为草稿 (false 表示直接发布)
           draft: false
           # 是否设为预发布 (如果 tag 包含 beta/alpha 自动设为 true，否则 false)
