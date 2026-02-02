@@ -6,7 +6,7 @@
 
 export interface AgentConfig {
   serverUrl: string;
-  agentName: string; // 唯一标识，通常是 hostname
+  agentName: string; // 唯一标识，使用机器码（64字符十六进制字符串）
   interval: number;  // 采集间隔 (ms)
   podmanSocket: string; // Unix Socket 路径
 }

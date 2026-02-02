@@ -37,11 +37,6 @@ async function loop() {
 
     wsClient.send(payload);
 
-    const time = new Date().toLocaleTimeString();
-    const cpu = host.cpu.usagePercent.toFixed(1);
-    const mem = host.memory.usagePercent.toFixed(1);
-    console.log(`[${time}] 上报成功 | CPU: ${cpu}% | 内存: ${mem}% | 容器数: ${containers.length}`);
-
   } catch (e) {
     console.error('主循环严重错误:', e);
   }
@@ -57,7 +52,7 @@ async function main() {
 
     wsClient.send(response);
 
-    console.log(`📤 命令 ${cmd.id} 响应已发送: ${response.success ? '成功' : '失败'}`);
+    console.log(`📤 命令 ${cmd.id} 响应已发送: ${response.success ? '失败' : '成功'}`);
   });
 
   await loop();

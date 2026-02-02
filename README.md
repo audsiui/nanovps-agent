@@ -72,9 +72,6 @@ bun run build:linux-arm64  # 仅 ARM64
 # WebSocket 服务器地址
 SERVER_URL=ws://your-server.com/ws
 
-# 代理名称（用于在管理界面标识）
-AGENT_NAME=My-VPS-01
-
 # 数据采集间隔（毫秒，默认 2000）
 COLLECT_INTERVAL=2000
 ```
