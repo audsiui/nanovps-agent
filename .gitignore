@@ -44,3 +44,5 @@ build/
 todo.md
 
 .claude/
+
+SERVER_DOCS.md

@@ -56,8 +56,6 @@ export interface HostStat {
 export interface ContainerStat {
   id: string;       // 容器短 ID (12位)
   name: string;     // 容器名称 (e.g., "my-nginx")
-  image: string;    // 镜像名称
-  state: 'running' | 'exited' | 'paused' | 'created' | 'unknown'; 
   
   cpuPercent: number; // CPU 使用率 (可能超过 100% 如果是多核)
   
