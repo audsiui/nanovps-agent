@@ -4,6 +4,9 @@ import { collectHostMetrics } from './collectors/host';
 import { collectContainerMetrics } from './collectors/podman';
 import type { ReportPayload } from './types';
 import { handleServerCommand } from './handlers/cmd-handler';
+import { createLogger } from './utils/logger';
+
+const logger = createLogger('Agent');
 
 async function loop() {
   // 如果未连接，跳过本次上报
@@ -14,11 +17,11 @@ async function loop() {
   try {
     const [host, containers] = await Promise.all([
       collectHostMetrics().catch(e => {
-        console.error('主机采集器错误:', e);
+        logger.error('主机采集器错误', e);
         return null;
       }),
       collectContainerMetrics().catch(e => {
-        console.error('容器采集器错误:', e);
+        logger.error('容器采集器错误', e);
         return [];
       })
     ]);
@@ -38,12 +41,12 @@ async function loop() {
     wsClient.send(payload);
 
   } catch (e) {
-    console.error('主循环严重错误:', e);
+    logger.error('主循环严重错误', e);
   }
 }
 
 async function main() {
-  console.log(`🚀 Agent 启动中... [ID: ${CONFIG.agentName}]`);
+  logger.info(`Agent 启动中... [ID: ${CONFIG.agentName}]`);
 
   wsClient.connect();
 
@@ -52,7 +55,7 @@ async function main() {
 
     wsClient.send(response);
 
-    console.log(`📤 命令 ${cmd.id} 响应已发送: ${response.success ? '失败' : '成功'}`);
+    logger.info(`命令 ${cmd.id} 响应已发送: ${response.success ? '成功' : '失败'}`);
   });
 
   await loop();

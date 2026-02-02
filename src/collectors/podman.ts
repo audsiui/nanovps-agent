@@ -1,6 +1,9 @@
 import { getPodmanSocket } from '../utils/socket';
 import { calculateRate } from '../utils/calc';
+import { createLogger } from '../utils/logger';
 import type { ContainerStat } from '../types';
+
+const logger = createLogger('Podman');
 
 export async function collectContainerMetrics(): Promise<ContainerStat[]> {
   const socketPath = await getPodmanSocket();
@@ -31,7 +34,7 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
     }
 
     if (rawStats.length === 0 && json.Stats) {
-      console.log('⚠️ [调试] Stats 结构异常:', JSON.stringify(json).substring(0, 100));
+      logger.debug('Stats 结构异常: ' + JSON.stringify(json).substring(0, 100));
     }
 
     const timestamp = Date.now();
@@ -113,7 +116,7 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
     return results;
 
   } catch (error: any) {
-    console.warn(`⚠️ [Podman 采集器] 失败: ${error.message}`);
+    logger.warn(`采集失败: ${error.message}`);
     return [];
   }
 }

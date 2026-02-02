@@ -2,6 +2,9 @@ import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
+import { createLogger } from './logger';
+
+const logger = createLogger('MachineKey');
 
 const KEY_DIR = join(homedir(), '.nanovps');
 const KEY_FILE = join(KEY_DIR, 'agent.key');
@@ -41,10 +44,10 @@ export function getMachineKey(): string {
     const newKey = generateKey();
     writeFileSync(KEY_FILE, newKey, { mode: 0o600 });
 
-    console.log(`🔐 机器密钥已生成: ${KEY_FILE}`);
+    logger.info(`机器密钥已生成: ${KEY_FILE}`);
     return newKey;
   } catch (error: any) {
-    console.error('获取机器密钥失败:', error.message);
+    logger.error('获取机器密钥失败: ' + error.message);
     // 回退：返回临时 key（不持久化，仅本次运行有效）
     return generateKey();
   }
@@ -59,10 +62,10 @@ export function resetMachineKey(): string {
     const newKey = generateKey();
     writeFileSync(KEY_FILE, newKey, { mode: 0o600 });
 
-    console.log(`🔐 机器密钥已重置: ${KEY_FILE}`);
+    logger.info(`机器密钥已重置: ${KEY_FILE}`);
     return newKey;
   } catch (error: any) {
-    console.error('重置机器密钥失败:', error.message);
+    logger.error('重置机器密钥失败: ' + error.message);
     throw error;
   }
 }

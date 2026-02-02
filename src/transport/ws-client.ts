@@ -1,8 +1,10 @@
 import { CONFIG } from '../config';
 import type { ClientMessage, ServerMessage } from '../types';
 import { getMachineKey } from '../utils/machine-key';
+import { createLogger } from '../utils/logger';
 
 const machineKey = getMachineKey();
+const logger = createLogger('WebSocket');
 const MAX_RECONNECT_ATTEMPTS = 2;
 
 let ws: WebSocket | null = null;
@@ -14,14 +16,14 @@ let isConnecting = false;
 
 function scheduleReconnect() {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error(`❌ 已达到最大重连次数 (${MAX_RECONNECT_ATTEMPTS})，放弃连接。`);
+    logger.error(`已达到最大重连次数 (${MAX_RECONNECT_ATTEMPTS})，放弃连接`);
     isConnecting = false;
     process.exit(1);
   }
 
   reconnectAttempts++;
   const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-  console.log(`⏳ ${delay}ms 后重连... (第 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} 次尝试)`);
+  logger.info(`${delay}ms 后重连... (第 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} 次尝试)`);
 
   if (reconnectTimer) clearTimeout(reconnectTimer);
 
@@ -31,7 +33,7 @@ function scheduleReconnect() {
 }
 
 function handleOpen() {
-  console.log('✅ WebSocket 已连接！');
+  logger.info('WebSocket 已连接');
   reconnectAttempts = 0;
   isConnected = true;
   isConnecting = false;
@@ -44,22 +46,22 @@ function handleMessage(event: MessageEvent) {
     if (msg.type === 'cmd' && commandHandler) {
       commandHandler(msg);
     } else {
-      console.log('📩 收到未知消息:', msg);
+      logger.warn('收到未知消息', msg);
     }
   } catch (e) {
-    console.error('解析服务器消息失败:', event.data);
+    logger.error('解析服务器消息失败', event.data);
   }
 }
 
 function handleClose(event: CloseEvent) {
-  console.warn(`❌ 连接断开 (代码: ${event.code})`);
+  logger.warn(`连接断开 (代码: ${event.code})`);
   isConnected = false;
   isConnecting = false;
   scheduleReconnect();
 }
 
 function handleError(event: Event) {
-  console.error('⚠️ WebSocket 错误');
+  logger.error('WebSocket 错误');
   isConnecting = false;
 }
 
@@ -79,7 +81,7 @@ export function send(msg: ClientMessage) {
     ws.send(JSON.stringify(msg));
     return;
   }else{
-    console.error('WebSocket 未连接，无法发送消息');
+    logger.error('WebSocket 未连接，无法发送消息');
   }
 
 }
@@ -90,7 +92,7 @@ export function send(msg: ClientMessage) {
 export function connect() {
   if (isConnected || isConnecting) return;
 
-  console.log(`🔌 正在连接到 ${CONFIG.serverUrl}...`);
+  logger.info(`正在连接到 ${CONFIG.serverUrl}...`);
   isConnecting = true;
 
   try {
@@ -114,7 +116,7 @@ export function connect() {
     ws.onerror = handleError;
 
   } catch (e) {
-    console.error('连接立即失败:', e);
+    logger.error('连接立即失败', e);
     isConnecting = false;
     scheduleReconnect();
   }

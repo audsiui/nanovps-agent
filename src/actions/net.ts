@@ -1,5 +1,8 @@
 // src/actions/net.ts
 import { spawn } from 'bun';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Firewall');
 
 interface ForwardOptions {
   protocol: 'tcp' | 'udp' | 'all';
@@ -13,7 +16,7 @@ interface ForwardOptions {
  * 执行 iptables/ip6tables 命令 (安全版)
  */
 async function runNetCommand(bin: string, args: string[]) {
-  console.log(`🛡️ 执行防火墙规则: ${bin} ${args.join(' ')}`);
+  logger.info(`执行防火墙规则: ${bin} ${args.join(' ')}`);
   
   const proc = spawn([bin, ...args], {
     stdout: 'ignore', // 不需要输出，除非报错
@@ -82,7 +85,7 @@ export async function setupPortForwarding(opts: ForwardOptions) {
       try {
         await applyRule(tool, proto, port, targetIp, targetPort);
       } catch (err: any) {
-        console.error(`⚠️ 设置规则失败 [${tool}/${proto}]: ${err.message}`);
+        logger.error(`设置规则失败 [${tool}/${proto}]: ${err.message}`);
         // 这里可以选择是否 throw，或者继续执行下一个协议
         throw err;
       }
@@ -141,7 +144,7 @@ export async function removePortForwarding(opts: ForwardOptions) {
       try {
         await removeRule(tool, proto, port, targetIp, targetPort);
       } catch (err: any) {
-        console.error(`⚠️ 删除规则失败 [${tool}/${proto}]: ${err.message}`);
+        logger.error(`删除规则失败 [${tool}/${proto}]: ${err.message}`);
         // 忽略不存在的规则错误
         if (!err.message?.includes('No chain/target/match by that name')) {
           throw err;

@@ -2,11 +2,14 @@
 import type { ServerCommand, CommandResponsePayload } from '../types';
 import * as podman from '../actions/podman';
 import * as net from '../actions/net';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('Command');
 
 export async function handleServerCommand(
   cmd: ServerCommand,
 ): Promise<CommandResponsePayload> {
-  console.log(`🤖 正在处理命令: [${cmd.action}] (ID: ${cmd.id})`);
+  logger.info(`正在处理命令: [${cmd.action}] (ID: ${cmd.id})`);
 
   let success = false;
   let message = '';
@@ -49,7 +52,7 @@ export async function handleServerCommand(
 
     success = true;
   } catch (e: any) {
-    console.error(`❌ 命令执行失败:`, e);
+    logger.error('命令执行失败', e);
     success = false;
     message = e.message || 'Internal Agent Error';
   }
