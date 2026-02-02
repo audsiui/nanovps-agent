@@ -53,5 +53,34 @@ jobs:
           draft: false
           # 是否设为预发布 (如果 tag 包含 beta/alpha 自动设为 true，否则 false)
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          body: |
+            ## 快速开始
+
+            ```bash
+            # AMD64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nanovps-agent-linux-amd64 -O nanovps-agent
+
+            # ARM64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nanovps-agent-linux-arm64 -O nanovps-agent
+
+            chmod +x nanovps-agent
+            ```
+
+            ## 配置
+
+            创建 `.env` 文件：
+
+            ```bash
+            SERVER_URL=ws://your-server.com/ws
+            COLLECT_INTERVAL=2000
+            LOG_MODE=file
+            LOG_DIR=./logs
+            ```
+
+            ## 运行
+
+            ```bash
+            ./nanovps-agent
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
