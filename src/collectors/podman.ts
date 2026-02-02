@@ -7,7 +7,7 @@ export async function collectContainerMetrics(): Promise<ContainerStat[]> {
   if (!socketPath) return [];
 
   try {
-    const response = await fetch('http://d/v4.0.0/libpod/containers/stats?stream=false', {
+    const response = await fetch('http://d/v5.0.0/libpod/containers/stats?stream=false', {
       unix: socketPath,
     });
 

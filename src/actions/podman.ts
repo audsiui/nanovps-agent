@@ -10,8 +10,8 @@ async function podmanAction(id: string, action: string) {
   const socketPath = await getPodmanSocket();
   if (!socketPath) throw new Error('Podman socket not available');
 
-  // 构建 URL: /v4.0.0/libpod/containers/{id}/{action}
-  const url = `http://d/v4.0.0/libpod/containers/${id}/${action}`;
+  // 构建 URL: /v5.0.0/libpod/containers/{id}/{action}
+  const url = `http://d/v5.0.0/libpod/containers/${id}/${action}`;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -47,7 +47,12 @@ export interface CreateContainerOptions {
   cpus?: number;
   sshPort?: number;
   network?: string;
-  capAdd?: string[];
+  /** 静态 IPv4 地址 */
+  ip?: string;
+  /** 静态 IPv6 地址 */
+  ip6?: string;
+  /** 环境变量，如 { ROOT_PASSWORD: 'xxx' } */
+  env?: Record<string, string>;
   userns?: string;
   restartPolicy?: string;
 }
@@ -95,14 +100,21 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     ];
   }
 
-  // 网络
+  // 网络配置
   if (options.network) {
-    containerConfig.networks = [{ name: options.network }];
+    const networkConfig: any = { name: options.network };
+    if (options.ip) {
+      networkConfig.static_ips = [options.ip];
+    }
+    if (options.ip6) {
+      networkConfig.static_ipv6s = [options.ip6];
+    }
+    containerConfig.networks = [networkConfig];
   }
 
-  // Capabilities
-  if (options.capAdd && options.capAdd.length > 0) {
-    containerConfig.cap_add = options.capAdd;
+  // 环境变量
+  if (options.env && Object.keys(options.env).length > 0) {
+    containerConfig.env = Object.entries(options.env).map(([key, value]) => `${key}=${value}`);
   }
 
   // User namespace
@@ -110,8 +122,11 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     containerConfig.userns = options.userns;
   }
 
+  // Systemd 模式（写死为 always）
+  containerConfig.systemd = 'always';
+
   // 1. 创建容器
-  const createUrl = `http://d/v4.0.0/libpod/containers/create`;
+  const createUrl = `http://d/v5.0.0/libpod/containers/create`;
   const createRes = await fetch(createUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -128,7 +143,7 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   const containerId = createData.Id;
 
   // 2. 启动容器
-  const startUrl = `http://d/v4.0.0/libpod/containers/${containerId}/start`;
+  const startUrl = `http://d/v5.0.0/libpod/containers/${containerId}/start`;
   const startRes = await fetch(startUrl, {
     method: 'POST',
     unix: socketPath,
