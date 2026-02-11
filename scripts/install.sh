@@ -18,10 +18,16 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # 检查 root
-if [ "$EUID" -ne 0 ]; then 
+if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}错误: 请使用 root 权限运行${NC}"
     echo "用法: sudo bash $0"
     exit 1
+fi
+
+# 检测是否在交互式终端运行
+INTERACTIVE=false
+if [ -t 0 ] && [ -t 1 ]; then
+    INTERACTIVE=true
 fi
 
 # 创建工作目录
@@ -34,6 +40,10 @@ echo "  NanoVPS Agent 安装向导"
 echo "====================================="
 echo ""
 echo "工作目录: $WORK_DIR"
+
+if [ "$INTERACTIVE" = false ]; then
+    echo -e "${YELLOW}注意: 检测到非交互式模式，将自动执行所有步骤${NC}"
+fi
 echo ""
 
 # 下载所有脚本
@@ -74,8 +84,11 @@ echo "每完成一步，您需要确认后才继续下一步"
 echo ""
 echo "系统要求: Debian 13"
 echo ""
-read -p "按回车键开始安装..."
-echo ""
+
+if [ "$INTERACTIVE" = true ]; then
+    read -p "按回车键开始安装..."
+    echo ""
+fi
 
 # 步骤计数器
 STEP=0
@@ -86,9 +99,9 @@ run_step() {
     local step_name=$1
     local step_desc=$2
     local script_name=$3
-    
+
     STEP=$((STEP + 1))
-    
+
     echo ""
     echo "====================================="
     echo "  步骤 $STEP/$TOTAL_STEPS: $step_name"
@@ -96,18 +109,24 @@ run_step() {
     echo ""
     echo "描述: $step_desc"
     echo ""
-    
-    read -p "是否执行此步骤? (y/N): " -n 1 -r
-    echo
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}跳过步骤 $STEP${NC}"
-        return 0
+
+    # 非交互模式自动执行
+    if [ "$INTERACTIVE" = false ]; then
+        echo "正在自动执行..."
+        echo ""
+    else
+        read -p "是否执行此步骤? (y/N): " -n 1 -r
+        echo
+
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}跳过步骤 $STEP${NC}"
+            return 0
+        fi
+
+        echo "正在执行..."
+        echo ""
     fi
-    
-    echo "正在执行..."
-    echo ""
-    
+
     # 执行脚本
     if [ -f "$script_name" ]; then
         bash "$script_name"
@@ -117,9 +136,17 @@ run_step() {
         else
             echo ""
             echo -e "${RED}✗ 步骤 $STEP 执行失败${NC}"
-            read -p "是否继续下一步? (y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+
+            if [ "$INTERACTIVE" = true ]; then
+                read -p "是否继续下一步? (y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo "安装已中止"
+                    rm -rf "$WORK_DIR"
+                    exit 1
+                fi
+            else
+                # 非交互模式下失败直接退出
                 echo "安装已中止"
                 rm -rf "$WORK_DIR"
                 exit 1

@@ -25,6 +25,8 @@
 curl -fsSL https://raw.githubusercontent.com/audsiui/nanovps-agent/main/scripts/install.sh | bash
 ```
 
+**注意：** 通过 `curl | bash` 执行时会进入**非交互式模式**，自动执行所有安装步骤而无需确认。
+
 安装脚本会自动完成：
 - ✅ 检查并配置 SWAP
 - ✅ 安装 Podman 容器引擎
@@ -32,6 +34,16 @@ curl -fsSL https://raw.githubusercontent.com/audsiui/nanovps-agent/main/scripts/
 - ✅ 配置容器网络（IPv4/IPv6）
 - ✅ 下载并配置 Agent
 - ✅ 创建 systemd 服务
+
+**交互式安装（本地执行）：**
+
+如需一步步确认，请先下载脚本再执行：
+
+```bash
+wget https://raw.githubusercontent.com/audsiui/nanovps-agent/main/scripts/install.sh
+chmod +x install.sh
+sudo bash install.sh
+```
 
 ## 快速开始
 
