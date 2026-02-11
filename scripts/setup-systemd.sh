@@ -51,9 +51,9 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=$INSTALL_DIR
 ExecStart=$INSTALL_DIR/nanovps-agent
-Restart=always
+Restart=on-failure
 RestartSec=5
-StartLimitIntervalSec=60
+StartLimitIntervalSec=300
 StartLimitBurst=5
 
 # 环境变量
@@ -88,8 +88,8 @@ echo "服务名称: $SERVICE_NAME"
 echo ""
 echo "服务特性:"
 echo "  ✓ 开机自启"
-echo "  ✓ 自动重启 (退出后5秒自动重启)"
-echo "  ✓ 重启限制 (60秒内最多5次，超过则停止)"
+echo "  ✓ 自动重启 (失败后5秒自动重启)"
+echo "  ✓ 重启限制 (5分钟内最多5次，超过则停止并标记为failed)"
 echo ""
 echo "管理命令:"
 echo "  systemctl start $SERVICE_NAME    # 启动服务"
