@@ -52,9 +52,10 @@ Type=simple
 WorkingDirectory=$INSTALL_DIR
 ExecStart=$INSTALL_DIR/nanovps-agent
 Restart=on-failure
-RestartSec=5
-StartLimitIntervalSec=300
-StartLimitBurst=5
+RestartSec=300
+StartLimitIntervalSec=0
+StartLimitBurst=10
+StartLimitAction=none
 
 # 环境变量
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -88,8 +89,8 @@ echo "服务名称: $SERVICE_NAME"
 echo ""
 echo "服务特性:"
 echo "  ✓ 开机自启"
-echo "  ✓ 自动重启 (失败后5秒自动重启)"
-echo "  ✓ 重启限制 (5分钟内最多5次，超过则停止并标记为failed)"
+echo "  ✓ 自动重启 (启动失败后间隔5分钟重试)"
+echo "  ✓ 重启限制 (累计失败10次后停止，需手动启动)"
 echo ""
 echo "管理命令:"
 echo "  systemctl start $SERVICE_NAME    # 启动服务"
