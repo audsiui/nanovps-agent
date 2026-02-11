@@ -24,12 +24,6 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 检测是否在交互式终端运行
-INTERACTIVE=false
-if [ -t 0 ] && [ -t 1 ]; then
-    INTERACTIVE=true
-fi
-
 # 创建工作目录
 WORK_DIR="/tmp/nanovps-install-$$"
 mkdir -p "$WORK_DIR"
@@ -40,10 +34,6 @@ echo "  NanoVPS Agent 安装向导"
 echo "====================================="
 echo ""
 echo "工作目录: $WORK_DIR"
-
-if [ "$INTERACTIVE" = false ]; then
-    echo -e "${YELLOW}注意: 检测到非交互式模式，将自动执行所有步骤${NC}"
-fi
 echo ""
 
 # 下载所有脚本
@@ -84,11 +74,8 @@ echo "每完成一步，您需要确认后才继续下一步"
 echo ""
 echo "系统要求: Debian 13"
 echo ""
-
-if [ "$INTERACTIVE" = true ]; then
-    read -p "按回车键开始安装..."
-    echo ""
-fi
+read -p "按回车键开始安装..." < /dev/tty
+echo ""
 
 # 步骤计数器
 STEP=0
@@ -110,22 +97,16 @@ run_step() {
     echo "描述: $step_desc"
     echo ""
 
-    # 非交互模式自动执行
-    if [ "$INTERACTIVE" = false ]; then
-        echo "正在自动执行..."
-        echo ""
-    else
-        read -p "是否执行此步骤? (y/N): " -n 1 -r
-        echo
+    read -p "是否执行此步骤? (y/N): " -n 1 -r < /dev/tty
+    echo
 
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}跳过步骤 $STEP${NC}"
-            return 0
-        fi
-
-        echo "正在执行..."
-        echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}跳过步骤 $STEP${NC}"
+        return 0
     fi
+
+    echo "正在执行..."
+    echo ""
 
     # 执行脚本
     if [ -f "$script_name" ]; then
@@ -137,16 +118,9 @@ run_step() {
             echo ""
             echo -e "${RED}✗ 步骤 $STEP 执行失败${NC}"
 
-            if [ "$INTERACTIVE" = true ]; then
-                read -p "是否继续下一步? (y/N): " -n 1 -r
-                echo
-                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                    echo "安装已中止"
-                    rm -rf "$WORK_DIR"
-                    exit 1
-                fi
-            else
-                # 非交互模式下失败直接退出
+            read -p "是否继续下一步? (y/N): " -n 1 -r < /dev/tty
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 echo "安装已中止"
                 rm -rf "$WORK_DIR"
                 exit 1
