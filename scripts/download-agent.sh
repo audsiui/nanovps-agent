@@ -84,7 +84,7 @@ ARCH=$(detect_arch)
 if [ -z "$VERSION" ]; then
     echo "警告: 无法自动获取最新版本号"
     show_manual_download_help "$ARCH"
-    exit 0
+    exit 1
 fi
 
 echo "最新版本: $VERSION"
@@ -112,7 +112,7 @@ if [ $DOWNLOAD_STATUS -ne 0 ]; then
     # 清理可能残留的不完整文件
     rm -f "$TARGET_FILE"
     show_manual_download_help "$ARCH"
-    exit 0
+    exit 1
 fi
 
 chmod +x "$TARGET_FILE"

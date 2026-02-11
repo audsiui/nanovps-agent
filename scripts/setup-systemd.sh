@@ -31,7 +31,7 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo "警告: 未找到 .env 配置文件"
     echo "请先运行 setup-config.sh"
     echo ""
-    read -p "是否继续? (y/N): " -n 1 -r
+    read -p "是否继续? (y/N): " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 0
@@ -100,7 +100,7 @@ echo "  journalctl -u $SERVICE_NAME -f   # 查看日志"
 echo ""
 
 # 询问是否立即启动
-read -p "是否立即启动服务? (y/N): " -n 1 -r
+read -p "是否立即启动服务? (y/N): " -n 1 -r < /dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "启动服务..."

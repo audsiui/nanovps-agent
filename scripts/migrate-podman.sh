@@ -63,7 +63,7 @@ if [ -d "$OLD_STORAGE" ] && [ "$(ls -A $OLD_STORAGE 2>/dev/null)" ]; then
     echo "检测到旧的容器数据在 $OLD_STORAGE"
     echo "数据大小: $(du -sh $OLD_STORAGE 2>/dev/null | cut -f1)"
     echo ""
-    read -p "是否迁移旧数据? (y/N): " -n 1 -r
+    read -p "是否迁移旧数据? (y/N): " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "正在迁移..."

@@ -23,7 +23,7 @@ echo ""
 echo "专用存储路径: $STORAGE_DIR"
 echo ""
 echo "请输入存储大小 (单位: GB，如 20、50):"
-read -r SIZE_NUM
+read -r SIZE_NUM < /dev/tty
 
 # 验证输入
 if [[ ! "$SIZE_NUM" =~ ^[0-9]+$ ]]; then
@@ -40,7 +40,7 @@ echo "  挂载点: $MOUNT_POINT"
 echo "  大小: $SIZE"
 echo ""
 echo "继续? (y/N)"
-read -r CONFIRM
+read -r CONFIRM < /dev/tty
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     exit 0
 fi

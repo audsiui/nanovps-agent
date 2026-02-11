@@ -38,9 +38,9 @@ if [ "$SWAP_TOTAL" -eq 0 ]; then
     echo ""
     
     # 询问是否添加 SWAP
-    read -p "是否现在添加 SWAP? (y/N): " -n 1 -r
+    read -p "是否现在添加 SWAP? (y/N): " -n 1 -r < /dev/tty
     echo
-    
+
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo ""
         echo "请选择 SWAP 大小:"
@@ -49,7 +49,7 @@ if [ "$SWAP_TOTAL" -eq 0 ]; then
         echo "  3) 8192MB (8GB)"
         echo "  4) 自定义大小"
         echo ""
-        read -p "请选择 (1-4): " SWAP_CHOICE
+        read -p "请选择 (1-4): " SWAP_CHOICE < /dev/tty
         
         case $SWAP_CHOICE in
             1)
@@ -62,7 +62,7 @@ if [ "$SWAP_TOTAL" -eq 0 ]; then
                 SWAP_SIZE_MB=8192
                 ;;
             4)
-                read -p "请输入 SWAP 大小 (MB): " SWAP_SIZE_MB
+                read -p "请输入 SWAP 大小 (MB): " SWAP_SIZE_MB < /dev/tty
                 if ! [[ "$SWAP_SIZE_MB" =~ ^[0-9]+$ ]]; then
                     echo "错误: 无效的数字"
                     exit 1
@@ -103,7 +103,7 @@ if [ "$SWAP_TOTAL" -eq 0 ]; then
         echo "⚠ 未配置 SWAP，继续安装 Podman..."
         echo "  建议: 安装完成后手动配置 SWAP"
         echo ""
-        read -p "按回车键继续..."
+        read -p "按回车键继续..." < /dev/tty
     fi
 else
     echo "✓ SWAP 已配置"
@@ -114,7 +114,7 @@ else
         echo "      如需调整，可以运行: swapoff /swapfile && rm /swapfile"
         echo "      然后重新运行此脚本"
         echo ""
-        read -p "按回车键继续安装..."
+        read -p "按回车键继续安装..." < /dev/tty
     fi
 fi
 

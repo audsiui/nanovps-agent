@@ -30,7 +30,7 @@ if podman network exists "$NETWORK_NAME"; then
     podman network inspect "$NETWORK_NAME" --format 'table {{.Name}}\t{{.NetworkInterface}}\t{{.Driver}}' 2>/dev/null || \
     podman network inspect "$NETWORK_NAME"
     echo ""
-    read -p "是否删除并重新创建? (y/N): " -n 1 -r
+    read -p "是否删除并重新创建? (y/N): " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "删除现有网络..."

@@ -29,7 +29,7 @@ fi
 # 检查是否已有 .env 文件
 if [ -f "$ENV_FILE" ]; then
     echo "检测到已存在 .env 文件"
-    read -p "是否覆盖? (y/N): " -n 1 -r
+    read -p "是否覆盖? (y/N): " -n 1 -r < /dev/tty
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "保持现有配置"
@@ -66,7 +66,7 @@ echo "  SERVER_URL=wss://your-server.com:8080 (SSL)"
 echo ""
 
 # 询问是否立即编辑
-read -p "是否立即编辑配置文件? (y/N): " -n 1 -r
+read -p "是否立即编辑配置文件? (y/N): " -n 1 -r < /dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if command -v nano &> /dev/null; then
