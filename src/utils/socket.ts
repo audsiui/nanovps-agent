@@ -15,20 +15,10 @@ export async function findPodmanSocket(): Promise<string> {
     logger.warn(`配置的 socket [${CONFIG.podmanSocket}] 未找到，切换到自动检测`);
   }
 
-  const candidates: string[] = [];
-
-  const uid = typeof process.getuid === 'function' ? process.getuid() : -1;
-
-  if (uid >= 0) {
-    candidates.push(`/run/user/${uid}/podman/podman.sock`);
-  }
-
-  candidates.push('/run/podman/podman.sock');
-
-  for (const path of candidates) {
-    if (existsSync(path)) {
-      return path;
-    }
+  // 只检测系统级 socket（root 用户模式）
+  const socketPath = '/run/podman/podman.sock';
+  if (existsSync(socketPath)) {
+    return socketPath;
   }
 
   return '';

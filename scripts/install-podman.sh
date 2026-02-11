@@ -129,6 +129,7 @@ podman --version
 echo ""
 echo "正在启用 Podman 服务..."
 systemctl enable --now podman.socket
+systemctl enable --now podman-restart.service
 
 echo ""
 echo "正在检查 Podman 服务状态..."
