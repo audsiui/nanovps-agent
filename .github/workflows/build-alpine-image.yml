@@ -7,7 +7,7 @@ on:
       - main
       - master
     paths:
-      - 'images/**'
+      - 'images/Alpine/**'
   workflow_dispatch:  # 允许手动触发
 
 permissions:
