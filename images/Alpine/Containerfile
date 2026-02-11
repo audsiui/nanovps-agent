@@ -1,7 +1,7 @@
 FROM alpine:latest
 
-# 1. 只装最核心的两个包
-RUN apk add --no-cache openrc openssh bash curl wget
+# 1. 安装核心包 + fastfetch
+RUN apk add --no-cache openrc openssh bash curl wget fastfetch
 
 # 2. OpenRC 必须的最小欺骗文件 (没有这个启动会直接报错)
 RUN mkdir -p /run/openrc && touch /run/openrc/softlevel
@@ -9,6 +9,9 @@ RUN mkdir -p /run/openrc && touch /run/openrc/softlevel
 # 3. 允许 root 登录 + 开机自启
 RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     rc-update add sshd default
+
+# 3.5 配置登录时自动执行 fastfetch
+RUN echo 'fastfetch' >> /root/.bashrc
 
 # 4. 复制脚本
 COPY entrypoint.sh /entrypoint.sh

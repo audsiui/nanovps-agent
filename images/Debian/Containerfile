@@ -21,6 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# 1.5 安装 fastfetch (从 GitHub 下载最新版本)
+RUN wget -qO- https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb > /tmp/fastfetch.deb && \
+    dpkg -i /tmp/fastfetch.deb && \
+    rm /tmp/fastfetch.deb
+
 # # 2. Systemd 瘦身清理 (这是让 Systemd 在容器里不报错的关键)
 # # 删除不需要的 targets，防止启动卡顿或报错
 # RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
@@ -37,6 +42,9 @@ RUN mkdir -p /var/run/sshd && \
     sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     # 启用 SSH 服务开机自启
     systemctl enable ssh
+
+# 3.5 配置登录时自动执行 fastfetch
+RUN echo 'fastfetch' >> /root/.bashrc
 
 # 4. 准备入口脚本
 COPY entrypoint.sh /entrypoint.sh
