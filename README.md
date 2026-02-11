@@ -17,6 +17,22 @@
 - **机器标识** - 基于机器码的唯一 ID，无需手动配置
 - **日志轮转** - 内置日志文件轮转，支持控制台/文件/双模式
 
+## 一键安装（Debian 13）
+
+使用安装脚本（默认 root 权限运行）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/audsiui/nanovps-agent/main/scripts/install.sh | bash
+```
+
+安装脚本会自动完成：
+- ✅ 检查并配置 SWAP
+- ✅ 安装 Podman 容器引擎
+- ✅ 创建 XFS 存储卷
+- ✅ 配置容器网络（IPv4/IPv6）
+- ✅ 下载并配置 Agent
+- ✅ 创建 systemd 服务
+
 ## 快速开始
 
 ```bash
