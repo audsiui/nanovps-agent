@@ -10,8 +10,8 @@ RUN mkdir -p /run/openrc && touch /run/openrc/softlevel
 RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     rc-update add sshd default
 
-# 3.5 配置登录时自动执行 fastfetch
-RUN echo 'fastfetch' >> /root/.bashrc
+# 3.5 配置登录时自动执行 fastfetch (写入 profile，ash 和 bash 都会读)
+RUN echo 'fastfetch' >> /etc/profile
 
 # 4. 复制脚本
 COPY entrypoint.sh /entrypoint.sh
