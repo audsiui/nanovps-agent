@@ -53,7 +53,7 @@ WorkingDirectory=$INSTALL_DIR
 ExecStart=$INSTALL_DIR/nanovps-agent
 Restart=on-failure
 RestartSec=300
-StartLimitIntervalSec=0
+StartLimitIntervalSec=3600
 StartLimitBurst=10
 StartLimitAction=none
 
