@@ -1,0 +1,18 @@
+FROM alpine:latest
+
+# 1. 只装最核心的两个包
+RUN apk add --no-cache openrc openssh bash curl wget
+
+# 2. OpenRC 必须的最小欺骗文件 (没有这个启动会直接报错)
+RUN mkdir -p /run/openrc && touch /run/openrc/softlevel
+
+# 3. 允许 root 登录 + 开机自启
+RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    rc-update add sshd default
+
+# 4. 复制脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# 5. 启动
+ENTRYPOINT ["/entrypoint.sh"]
