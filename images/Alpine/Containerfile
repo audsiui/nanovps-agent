@@ -13,8 +13,7 @@ RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
 # 4. 复制脚本
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-STOPSIGNAL SIGRTMIN+3
+STOPSIGNAL SIGTERM
 
 # 5. 启动
 ENTRYPOINT ["/entrypoint.sh"]

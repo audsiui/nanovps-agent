@@ -7,4 +7,4 @@
 [ -n "$ROOT_PASSWORD" ] && echo "root:$ROOT_PASSWORD" | chpasswd
 
 # 3. 启动 OpenRC
-exec /sbin/openrc-init
+exec /sbin/init
