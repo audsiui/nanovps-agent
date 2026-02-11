@@ -34,13 +34,14 @@ async function runNetCommand(bin: string, args: string[]) {
   }
 }
 
+
 /**
  * 设置单条转发规则
  */
 async function applyRule(bin: 'iptables' | 'ip6tables', protocol: string, port: number, targetIp: string, targetPort: number) {
   const comment = `agent-fwd-${port}-${protocol}`;
 
-  // 1. DNAT (端口映射): 把宿主机的流量转给局域网IP
+  // 1. DNAT (外部流量): 从外部网卡进入的流量
   // 命令等同于: iptables -t nat -I PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 10.88.0.2:80 -m comment ...
   await runNetCommand(bin, [
     '-t', 'nat',
@@ -52,7 +53,19 @@ async function applyRule(bin: 'iptables' | 'ip6tables', protocol: string, port: 
     '-m', 'comment', '--comment', comment
   ]);
 
-  // 2. FORWARD (允许转发): 允许流量通过网桥进入容器
+  // 2. DNAT (本地回环): 宿主机本地访问 localhost:端口 或 宿主机IP:端口
+  // 命令等同于: iptables -t nat -I OUTPUT -p tcp --dport 8080 -j DNAT --to-destination 10.88.0.2:80 -m comment ...
+  await runNetCommand(bin, [
+    '-t', 'nat',
+    '-I', 'OUTPUT',
+    '-p', protocol,
+    '--dport', String(port),
+    '-j', 'DNAT',
+    '--to-destination', bin === 'ip6tables' ? `[${targetIp}]:${targetPort}` : `${targetIp}:${targetPort}`,
+    '-m', 'comment', '--comment', comment
+  ]);
+
+  // 3. FORWARD (允许转发): 允许流量通过网桥进入容器
   // 命令等同于: iptables -I FORWARD -p tcp -d 10.88.0.2 --dport 80 -j ACCEPT -m comment ...
   await runNetCommand(bin, [
     '-I', 'FORWARD',
@@ -92,6 +105,9 @@ export async function setupPortForwarding(opts: ForwardOptions) {
     }
   }
 
+  // 4. 保存规则
+  await saveFirewallRules();
+
   return true;
 }
 
@@ -101,7 +117,7 @@ export async function setupPortForwarding(opts: ForwardOptions) {
 async function removeRule(bin: 'iptables' | 'ip6tables', protocol: string, port: number, targetIp: string, targetPort: number) {
   const comment = `agent-fwd-${port}-${protocol}`;
 
-  // 1. 删除 DNAT 规则
+  // 1. 删除 PREROUTING DNAT 规则
   await runNetCommand(bin, [
     '-t', 'nat',
     '-D', 'PREROUTING',
@@ -112,7 +128,18 @@ async function removeRule(bin: 'iptables' | 'ip6tables', protocol: string, port:
     '-m', 'comment', '--comment', comment
   ]);
 
-  // 2. 删除 FORWARD 规则
+  // 2. 删除 OUTPUT DNAT 规则 (本地回环)
+  await runNetCommand(bin, [
+    '-t', 'nat',
+    '-D', 'OUTPUT',
+    '-p', protocol,
+    '--dport', String(port),
+    '-j', 'DNAT',
+    '--to-destination', bin === 'ip6tables' ? `[${targetIp}]:${targetPort}` : `${targetIp}:${targetPort}`,
+    '-m', 'comment', '--comment', comment
+  ]);
+
+  // 3. 删除 FORWARD 规则
   await runNetCommand(bin, [
     '-D', 'FORWARD',
     '-p', protocol,
@@ -153,5 +180,44 @@ export async function removePortForwarding(opts: ForwardOptions) {
     }
   }
 
+  // 4. 保存规则
+  await saveFirewallRules();
+
   return true;
+}
+
+/**
+ * 保存防火墙规则到持久化文件 (Debian iptables-persistent)
+ */
+async function saveFirewallRules() {
+  try {
+    const fs = await import('fs/promises');
+    
+    // 使用 iptables-save 保存 IPv4 规则到 /etc/iptables/rules.v4
+    const proc4 = spawn(['iptables-save'], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const exitCode4 = await proc4.exited;
+    if (exitCode4 === 0) {
+      const output4 = await new Response(proc4.stdout).text();
+      await fs.writeFile('/etc/iptables/rules.v4', output4, 'utf8');
+      logger.info('IPv4 防火墙规则已保存');
+    }
+    
+    // 使用 ip6tables-save 保存 IPv6 规则到 /etc/iptables/rules.v6
+    const proc6 = spawn(['ip6tables-save'], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const exitCode6 = await proc6.exited;
+    if (exitCode6 === 0) {
+      const output6 = await new Response(proc6.stdout).text();
+      await fs.writeFile('/etc/iptables/rules.v6', output6, 'utf8');
+      logger.info('IPv6 防火墙规则已保存');
+    }
+  } catch (err: any) {
+    // 保存失败不影响规则已生效，只记录警告
+    logger.warn(`保存防火墙规则失败: ${err.message}`);
+  }
 }
