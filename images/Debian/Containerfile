@@ -1,0 +1,51 @@
+# 使用 Debian 13 (Trixie) 的精简版
+FROM debian:trixie-slim
+
+# 避免 apt 安装过程中出现交互式问答
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. 安装核心包
+# systemd-sysv: 必须安装，否则没有 /sbin/init
+# iproute2: 提供 ip 命令 (ss 等)
+# procps: 提供 ps, free, top 等命令 (探针需要)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    systemd \
+    systemd-sysv \
+    openssh-server \
+    curl \
+    wget \
+    ca-certificates \
+    iproute2 \
+    procps \
+    nano \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# # 2. Systemd 瘦身清理 (这是让 Systemd 在容器里不报错的关键)
+# # 删除不需要的 targets，防止启动卡顿或报错
+# RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
+#     /etc/systemd/system/*.wants/* \
+#     /lib/systemd/system/local-fs.target.wants/* \
+#     /lib/systemd/system/sockets.target.wants/*udev* \
+#     /lib/systemd/system/sockets.target.wants/*initctl* \
+#     /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
+#     /lib/systemd/system/systemd-update-utmp*
+
+# 3. SSH 配置
+# 允许 root 登录
+RUN mkdir -p /var/run/sshd && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    # 启用 SSH 服务开机自启
+    systemctl enable ssh
+
+# 4. 准备入口脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# 5. 设置正确的停止信号
+# Systemd 需要 SIGRTMIN+3 才能优雅关机，否则会等10秒超时强杀
+STOPSIGNAL SIGRTMIN+3
+
+# 6. 启动
+# 这里直接把脚本作为 CMD 也可以，或者作为 ENTRYPOINT
+ENTRYPOINT ["/entrypoint.sh"]
