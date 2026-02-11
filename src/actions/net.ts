@@ -42,7 +42,7 @@ async function applyRule(bin: 'iptables' | 'ip6tables', protocol: string, port: 
   const comment = `agent-fwd-${port}-${protocol}`;
 
   // 1. DNAT (外部流量): 从外部网卡进入的流量
-  // 命令等同于: iptables -t nat -I PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 10.88.0.2:80 -m comment ...
+  // 命令等同于: iptables -t nat -I PREROUTING -p tcp --dport 8080 -j DNAT --to-destination 10.89.0.2:80 -m comment ...
   await runNetCommand(bin, [
     '-t', 'nat',
     '-I', 'PREROUTING',
@@ -54,7 +54,7 @@ async function applyRule(bin: 'iptables' | 'ip6tables', protocol: string, port: 
   ]);
 
   // 2. DNAT (本地回环): 宿主机本地访问 localhost:端口 或 宿主机IP:端口
-  // 命令等同于: iptables -t nat -I OUTPUT -p tcp --dport 8080 -j DNAT --to-destination 10.88.0.2:80 -m comment ...
+  // 命令等同于: iptables -t nat -I OUTPUT -p tcp --dport 8080 -j DNAT --to-destination 10.89.0.2:80 -m comment ...
   await runNetCommand(bin, [
     '-t', 'nat',
     '-I', 'OUTPUT',
@@ -66,7 +66,7 @@ async function applyRule(bin: 'iptables' | 'ip6tables', protocol: string, port: 
   ]);
 
   // 3. FORWARD (允许转发): 允许流量通过网桥进入容器
-  // 命令等同于: iptables -I FORWARD -p tcp -d 10.88.0.2 --dport 80 -j ACCEPT -m comment ...
+  // 命令等同于: iptables -I FORWARD -p tcp -d 10.89.0.2 --dport 80 -j ACCEPT -m comment ...
   await runNetCommand(bin, [
     '-I', 'FORWARD',
     '-p', protocol,

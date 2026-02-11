@@ -12,8 +12,9 @@ fi
 
 # 网络配置
 NETWORK_NAME="vps-net"
-IPV4_SUBNET="10.88.0.0/16"
-IPV4_GATEWAY="10.88.0.1"
+# 使用 10.89.0.0/16 避免与 Podman 默认网络 10.88.0.0/16 冲突
+IPV4_SUBNET="10.89.0.0/16"
+IPV4_GATEWAY="10.89.0.1"
 IPV6_SUBNET="fd00:dead:beef::/64"
 IPV6_GATEWAY="fd00:dead:beef::1"
 

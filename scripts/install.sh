@@ -273,7 +273,7 @@ echo "【容器网络】"
 if podman network exists vps-net 2>/dev/null; then
     echo "  网络名称: vps-net"
     echo "  驱动: bridge"
-    echo "  IPv4: 10.88.0.0/16 (网关: 10.88.0.1)"
+    echo "  IPv4: 10.89.0.0/16 (网关: 10.89.0.1)"
     echo "  IPv6: fd00:dead:beef::/64 (网关: fd00:dead:beef::1)"
 else
     echo "  网络名称: vps-net (未创建)"
