@@ -65,23 +65,13 @@ echo "  SERVER_URL=ws://your-server.com:8080"
 echo "  SERVER_URL=wss://your-server.com:8080 (SSL)"
 echo ""
 
-# 询问是否立即编辑
-read -p "是否立即编辑配置文件? (y/N): " -n 1 -r < /dev/tty
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if command -v nano &> /dev/null; then
-        nano "$ENV_FILE"
-    elif command -v vim &> /dev/null; then
-        vim "$ENV_FILE"
-    else
-        echo "未找到编辑器，请手动编辑:"
-        echo "  $ENV_FILE"
-    fi
-else
-    echo ""
-    echo "请稍后手动编辑配置文件:"
-    echo "  $ENV_FILE"
-fi
+echo ""
+echo "⚠ 重要: 请手动编辑配置文件:"
+echo "  $ENV_FILE"
+echo ""
+echo "必须修改 SERVER_URL 为您的服务端地址，例如:"
+echo "  SERVER_URL=ws://your-server.com:8080"
+echo "  SERVER_URL=wss://your-server.com:8080 (SSL)"
 
 echo ""
 echo "====================================="
