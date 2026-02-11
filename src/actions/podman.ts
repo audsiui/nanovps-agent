@@ -28,7 +28,32 @@ async function podmanAction(id: string, action: string) {
 export const restartContainer = (id: string) => podmanAction(id, 'restart');
 export const stopContainer = (id: string) => podmanAction(id, 'stop');
 export const startContainer = (id: string) => podmanAction(id, 'start');
-export const killContainer = (id: string) => podmanAction(id, 'kill');
+
+/**
+ * 删除容器
+ * @param id 容器 ID
+ * @param force 是否强制删除（包括正在运行的容器）
+ */
+export async function removeContainer(id: string, force: boolean): Promise<void> {
+  const socketPath = await getPodmanSocket();
+  if (!socketPath) throw new Error('Podman socket not available');
+
+  const params = new URLSearchParams();
+  if (force) {
+    params.append('force', 'true');
+  }
+
+  const url = `http://d/v5.0.0/libpod/containers/${id}?${params.toString()}`;
+
+  const res = await fetch(url, {
+    method: 'DELETE',
+    unix: socketPath,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Podman remove failed: ${res.statusText}`);
+  }
+}
 
 /**
  * 创建并启动容器
@@ -45,6 +70,8 @@ export interface CreateContainerOptions {
   storageOpt?: string;
   /** CPU 核心数限制 (如 0.5, 1, 2) */
   cpus?: number;
+  /** 进程数限制 */
+  pidsLimit?: number;
   sshPort?: number;
   network?: string;
   /** 静态 IPv4 地址 */
@@ -83,6 +110,9 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   if (options.cpus) {
     resources.cpu_period = 100000;
     resources.cpu_quota = Math.floor(options.cpus * 100000);
+  }
+  if (options.pidsLimit) {
+    resources.pids = { limit: options.pidsLimit };
   }
   if (Object.keys(resources).length > 0) {
     containerConfig.resource_limits = resources;

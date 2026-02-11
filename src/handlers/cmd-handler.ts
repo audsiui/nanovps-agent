@@ -38,6 +38,14 @@ export async function handleServerCommand(
         await podman.startContainer(cmd.payload.containerId);
         message = `Container ${cmd.payload.containerId} started`;
         break;
+      case 'container:remove':
+        await podman.removeContainer(cmd.payload.containerId, false);
+        message = `Container ${cmd.payload.containerId} removed`;
+        break;
+      case 'container:remove-force':
+        await podman.removeContainer(cmd.payload.containerId, true);
+        message = `Container ${cmd.payload.containerId} force removed`;
+        break;
       case 'net:forward':
         await net.setupPortForwarding(cmd.payload);
         message = `Port forwarding set: :${cmd.payload.port} -> ${cmd.payload.targetIp}:${cmd.payload.targetPort || cmd.payload.port} (${cmd.payload.protocol})`;

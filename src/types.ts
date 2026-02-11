@@ -131,8 +131,8 @@ export type AgentAction =
   | 'container:start'
   | 'container:stop'
   | 'container:restart'
-  | 'container:kill'
-  | 'container:remove'
+  | 'container:remove'  // 删除容器
+  | 'container:remove-force' // 强制删除容器
 
   // --- Agent 自身 ---
   | 'agent:upgrade'

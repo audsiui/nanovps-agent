@@ -45,5 +45,6 @@ todo.md
 
 .claude/
 
-SERVER_DOCS.md
+AGENTS.md
 .serena
+.agents
