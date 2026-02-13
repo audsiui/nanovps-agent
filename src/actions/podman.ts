@@ -93,8 +93,10 @@ async function pullImage(image: string): Promise<void> {
   const socketPath = await getPodmanSocket();
   if (!socketPath) throw new Error('Podman socket not available');
 
-  const pullUrl = `http://d/v5.0.0/libpod/images/pull?reference=${encodeURIComponent(image)}`;
+  // 使用 t=-1 参数等待拉取完成（无限超时）
+  const pullUrl = `http://d/v5.0.0/libpod/images/pull?reference=${encodeURIComponent(image)}&t=-1`;
   
+  console.log(`[Podman] 开始拉取镜像: ${image}`);
   const res = await fetch(pullUrl, {
     method: 'POST',
     unix: socketPath,
@@ -103,6 +105,30 @@ async function pullImage(image: string): Promise<void> {
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to pull image ${image}: ${res.statusText} - ${errorText}`);
+  }
+
+  // 读取并丢弃响应流（等待拉取完成）
+  await res.text();
+  console.log(`[Podman] 镜像拉取完成: ${image}`);
+}
+
+/**
+ * 检查镜像是否存在
+ */
+async function imageExists(image: string): Promise<boolean> {
+  const socketPath = await getPodmanSocket();
+  if (!socketPath) return false;
+
+  const url = `http://d/v5.0.0/libpod/images/${encodeURIComponent(image)}/exists`;
+  
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      unix: socketPath,
+    });
+    return res.status === 204;
+  } catch {
+    return false;
   }
 }
 
@@ -196,6 +222,20 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   if (createRes.status === 404) {
     console.log(`Image ${options.image} not found locally, pulling...`);
     await pullImage(options.image);
+    
+    // 等待镜像可用（最多重试 10 次，每次 1 秒）
+    let exists = false;
+    for (let i = 0; i < 10; i++) {
+      if (await imageExists(options.image)) {
+        exists = true;
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    if (!exists) {
+      throw new Error(`Image ${options.image} pulled but not available after waiting`);
+    }
     
     // 重新创建容器
     const retryRes = await fetch(createUrl, {
