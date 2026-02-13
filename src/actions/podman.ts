@@ -124,7 +124,7 @@ export async function createContainer(options: CreateContainerOptions): Promise<
   }
   if (options.memorySwap) {
     resources.memory = resources.memory || {};
-    resources.memory.swap = { limit: options.memorySwap };
+    resources.memory.swap = options.memorySwap;  // int64 类型，不是对象
   }
   if (options.storageOpt) {
     resources.storage_opt = [options.storageOpt];
