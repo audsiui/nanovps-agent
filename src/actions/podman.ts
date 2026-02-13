@@ -96,13 +96,13 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     restart_policy: options.restartPolicy || 'always',
   };
 
-  // 资源限制 (直接使用服务端传来的数值)
+  // 资源限制 (OCI spec 格式)
   const resources: any = {};
   if (options.memory) {
-    resources.memory = options.memory;
+    resources.memory = { limit: options.memory };
   }
   if (options.memorySwap) {
-    resources.memory_swap = options.memorySwap;
+    resources.memory_swap = { limit: options.memorySwap };
   }
   if (options.storageOpt) {
     resources.storage_opt = [options.storageOpt];
