@@ -168,9 +168,9 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     };
   }
 
-  // 环境变量 - Libpod API 需要数组格式 ["KEY=value"]
+  // 环境变量 - Libpod API 需要 map[string]string 格式
   if (options.env && Object.keys(options.env).length > 0) {
-    containerConfig.env = Object.entries(options.env).map(([key, value]) => `${key}=${value}`);
+    containerConfig.env = options.env;
   }
 
   // User namespace (Podman v5 需要对象格式)
