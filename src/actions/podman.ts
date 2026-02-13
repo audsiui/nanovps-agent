@@ -84,13 +84,34 @@ export interface CreateContainerOptions {
   restartPolicy?: string;
 }
 
+
+/**
+ * 拉取镜像
+ * @param image 镜像名称 (如 "docker.io/library/alpine:latest")
+ */
+async function pullImage(image: string): Promise<void> {
+  const socketPath = await getPodmanSocket();
+  if (!socketPath) throw new Error('Podman socket not available');
+
+  const pullUrl = `http://d/v5.0.0/libpod/images/pull?reference=${encodeURIComponent(image)}`;
+  
+  const res = await fetch(pullUrl, {
+    method: 'POST',
+    unix: socketPath,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to pull image ${image}: ${res.statusText} - ${errorText}`);
+  }
+}
+
 export async function createContainer(options: CreateContainerOptions): Promise<{ id: string; name: string }> {
   const socketPath = await getPodmanSocket();
   if (!socketPath) throw new Error('Podman socket not available');
 
-  // 构建 Podman API 的容器配置
+  // 构建 Podman API 的容器配置 (SpecGenerator)
   const containerConfig: any = {
-    name: options.name,
     image: options.image,
     hostname: options.hostname,
     restart_policy: options.restartPolicy || 'always',
@@ -102,7 +123,8 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     resources.memory = { limit: options.memory };
   }
   if (options.memorySwap) {
-    resources.memory_swap = { limit: options.memorySwap };
+    resources.memory = resources.memory || {};
+    resources.memory.swap = { limit: options.memorySwap };
   }
   if (options.storageOpt) {
     resources.storage_opt = [options.storageOpt];
@@ -121,14 +143,13 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     containerConfig.resource_limits = resources;
   }
 
-  // 端口映射 (Podman v5 使用 camelCase)
+  // 端口映射 (Podman v5 使用 port_mappings)
   if (options.sshPort) {
     containerConfig.port_mappings = [
       {
-        hostPort: options.sshPort,
-        containerPort: 22,
+        container_port: 22,
+        host_port: options.sshPort,
         protocol: 'tcp',
-        hostIP: '',
       }
     ];
   }
@@ -147,21 +168,21 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     };
   }
 
-  // 环境变量
+  // 环境变量 - Libpod API 需要数组格式 ["KEY=value"]
   if (options.env && Object.keys(options.env).length > 0) {
     containerConfig.env = Object.entries(options.env).map(([key, value]) => `${key}=${value}`);
   }
 
-  // User namespace
+  // User namespace (Podman v5 需要对象格式)
   if (options.userns) {
-    containerConfig.userns = options.userns;
+    containerConfig.userns = { nsmode: options.userns };
   }
 
   // Systemd 模式（写死为 always）
   containerConfig.systemd = 'always';
 
-  // 1. 创建容器
-  const createUrl = `http://d/v5.0.0/libpod/containers/create`;
+  // 1. 创建容器 (name 必须作为 URL query 参数)
+  const createUrl = `http://d/v5.0.0/libpod/containers/create?name=${encodeURIComponent(options.name)}`;
   const createRes = await fetch(createUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -169,13 +190,35 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     unix: socketPath,
   });
 
-  if (!createRes.ok) {
+  let containerId: string;
+  
+  // 如果镜像不存在，自动拉取并重试
+  if (createRes.status === 404) {
+    console.log(`Image ${options.image} not found locally, pulling...`);
+    await pullImage(options.image);
+    
+    // 重新创建容器
+    const retryRes = await fetch(createUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(containerConfig),
+      unix: socketPath,
+    });
+    
+    if (!retryRes.ok) {
+      const errorText = await retryRes.text();
+      throw new Error(`Failed to create container after pulling image: ${retryRes.statusText} - ${errorText}`);
+    }
+    
+    const retryData = (await retryRes.json()) as { Id: string };
+    containerId = retryData.Id;
+  } else if (!createRes.ok) {
     const errorText = await createRes.text();
     throw new Error(`Failed to create container: ${createRes.statusText} - ${errorText}`);
+  } else {
+    const createData = (await createRes.json()) as { Id: string };
+    containerId = createData.Id;
   }
-
-  const createData = (await createRes.json()) as { Id: string };
-  const containerId = createData.Id;
 
   // 2. 启动容器
   const startUrl = `http://d/v5.0.0/libpod/containers/${containerId}/start`;
