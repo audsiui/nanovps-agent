@@ -169,14 +169,10 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     containerConfig.resource_limits = resources;
   }
 
-  // 端口映射 (Podman v5 使用 port_mappings)
+  // 端口映射 - 使用 publish 格式兼容自定义网络
   if (options.sshPort) {
-    containerConfig.port_mappings = [
-      {
-        container_port: 22,
-        host_port: options.sshPort,
-        protocol: 'tcp',
-      }
+    containerConfig.publish = [
+      `${options.sshPort}:22/tcp`
     ];
   }
 
