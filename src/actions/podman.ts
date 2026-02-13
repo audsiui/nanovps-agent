@@ -108,8 +108,11 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     resources.storage_opt = [options.storageOpt];
   }
   if (options.cpus) {
-    resources.cpu_period = 100000;
-    resources.cpu_quota = Math.floor(options.cpus * 100000);
+    // CPU 使用 OCI LinuxCPU 格式
+    resources.cpu = {
+      quota: Math.floor(options.cpus * 100000),
+      period: 100000
+    };
   }
   if (options.pidsLimit) {
     resources.pids = { limit: options.pidsLimit };
@@ -118,28 +121,30 @@ export async function createContainer(options: CreateContainerOptions): Promise<
     containerConfig.resource_limits = resources;
   }
 
-  // 端口映射
+  // 端口映射 (Podman v5 使用 camelCase)
   if (options.sshPort) {
     containerConfig.port_mappings = [
       {
-        host_port: options.sshPort,
-        container_port: 22,
+        hostPort: options.sshPort,
+        containerPort: 22,
         protocol: 'tcp',
-        host_ip: '',
+        hostIP: '',
       }
     ];
   }
 
-  // 网络配置
+  // 网络配置 (Podman v5 使用 map 格式)
   if (options.network) {
-    const networkConfig: any = { name: options.network };
+    const networkConfig: any = {};
     if (options.ip) {
       networkConfig.static_ips = [options.ip];
     }
     if (options.ip6) {
       networkConfig.static_ipv6s = [options.ip6];
     }
-    containerConfig.networks = [networkConfig];
+    containerConfig.networks = {
+      [options.network]: networkConfig
+    };
   }
 
   // 环境变量
