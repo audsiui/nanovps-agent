@@ -1,11 +1,11 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use std::env;
-use crate::machine_key;
+use std::io::{self, Write};
 
 #[derive(Clone, Debug)]
 pub struct Config {
     pub server_url: String,
-    pub agent_name: String,
+    pub agent_id: String,
     pub collect_interval_ms: u64,
     pub podman_socket: String,
     pub log_mode: String,
@@ -14,9 +14,24 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Self> {
+        let agent_id = match env::var("AGENT_ID") {
+            Ok(id) if !id.trim().is_empty() => id.trim().to_string(),
+            _ => {
+                print!("Enter Agent ID: ");
+                io::stdout().flush()?;
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                let id = input.trim().to_string();
+                if id.is_empty() {
+                    bail!("AGENT_ID is not configured, agent exiting");
+                }
+                id
+            }
+        };
+
         Ok(Self {
             server_url: env::var("SERVER_URL").unwrap_or_else(|_| "ws://127.0.0.1:3000/ws".to_string()),
-            agent_name: env::var("AGENT_NAME").unwrap_or_else(|_| machine_key::load_or_create().unwrap_or_else(|_| hostname_fallback())),
+            agent_id,
             collect_interval_ms: parse_interval_ms(&env::var("COLLECT_INTERVAL").unwrap_or_else(|_| "10s".to_string())),
             podman_socket: env::var("PODMAN_SOCKET").unwrap_or_else(|_| "/run/podman/podman.sock".to_string()),
             log_mode: env::var("LOG_MODE").unwrap_or_else(|_| "console".to_string()),
@@ -42,8 +57,3 @@ fn parse_interval_ms(value: &str) -> u64 {
     ms.clamp(10_000, 30_000)
 }
 
-fn hostname_fallback() -> String {
-    std::env::var("HOSTNAME")
-        .or_else(|_| std::env::var("COMPUTERNAME"))
-        .unwrap_or_else(|_| "nanovps-agent".to_string())
-}

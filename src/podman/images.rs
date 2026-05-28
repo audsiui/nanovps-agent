@@ -3,8 +3,8 @@ use anyhow::Result;
 
 impl PodmanClient {
     pub async fn pull_image(&self, image: &str) -> Result<()> {
-        let reference = encode_component(image);
-        self.post_empty(&format!("/images/pull?reference={reference}&t=-1")).await?;
+        let from_image = encode_component(image);
+        self.post_empty(&format!("/images/create?fromImage={from_image}")).await?;
         Ok(())
     }
 

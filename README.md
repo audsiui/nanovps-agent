@@ -11,6 +11,7 @@ cargo build --release
 ## Environment
 
 ```bash
+AGENT_ID=your-agent-id
 SERVER_URL=ws://127.0.0.1:3000/ws
 COLLECT_INTERVAL=10s
 PODMAN_SOCKET=/run/podman/podman.sock

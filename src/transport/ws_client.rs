@@ -8,7 +8,7 @@ use url::Url;
 
 pub async fn run(
     server_url: String,
-    machine_key: String,
+    agent_id: String,
     mut outbound: mpsc::Receiver<ClientMessage>,
     inbound: mpsc::Sender<ServerMessage>,
 ) {
@@ -16,7 +16,7 @@ pub async fn run(
     let mut pending: Vec<ClientMessage> = Vec::new();
 
     loop {
-        match connect_url(&server_url, &machine_key) {
+        match connect_url(&server_url, &agent_id) {
             Ok(url) => match connect_async(url.as_str()).await {
                 Ok((ws, _)) => {
                     tracing::info!("websocket connected");
@@ -70,9 +70,9 @@ pub async fn run(
     }
 }
 
-fn connect_url(server_url: &str, machine_key: &str) -> Result<Url> {
+fn connect_url(server_url: &str, agent_id: &str) -> Result<Url> {
     let mut url = Url::parse(server_url)?;
-    url.query_pairs_mut().append_pair("key", machine_key);
+    url.query_pairs_mut().append_pair("id", agent_id);
     Ok(url)
 }
 

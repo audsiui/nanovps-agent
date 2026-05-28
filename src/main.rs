@@ -3,7 +3,6 @@ mod collectors;
 mod command;
 mod config;
 mod logger;
-mod machine_key;
 mod podman;
 mod transport;
 mod types;
@@ -20,17 +19,16 @@ use types::{ClientMessage, ReportPayload, ServerMessage};
 async fn main() -> Result<()> {
     let config = config::Config::load()?;
     logger::init(&config.log_mode, &config.log_dir);
-    let machine_key = machine_key::load_or_create()?;
     let podman = PodmanClient::new(&config.podman_socket);
 
-    tracing::info!(agent_id = %config.agent_name, server_url = %config.server_url, "agent started");
+    tracing::info!(agent_id = %config.agent_id, server_url = %config.server_url, "agent started");
 
     let (outbound_tx, outbound_rx) = mpsc::channel(256);
     let (inbound_tx, mut inbound_rx) = mpsc::channel(256);
 
     tokio::spawn(transport::ws_client::run(
         config.server_url.clone(),
-        machine_key,
+        config.agent_id.clone(),
         outbound_rx,
         inbound_tx,
     ));
@@ -60,7 +58,7 @@ async fn main() -> Result<()> {
         };
 
         let report = ClientMessage::Report(ReportPayload {
-            agent_id: config.agent_name.clone(),
+            agent_id: config.agent_id.clone(),
             timestamp: collectors::host::now_ms(),
             host,
             containers,
