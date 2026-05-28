@@ -1,0 +1,189 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+          - target: aarch64-unknown-linux-musl
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Install musl tools (x86_64)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Configure cross-compilation linker (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          mkdir -p .cargo
+          cat >> .cargo/config.toml << 'EOF'
+          [target.aarch64-unknown-linux-musl]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - name: Install musl tools (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          sudo apt-get install -y musl-tools
+          # Download aarch64 musl cross-compiled sysroot
+          URL="https://musl.cc/aarch64-linux-musl-cross.tgz"
+          curl -fSL "$URL" -o /tmp/aarch64-musl.tgz
+          sudo tar -xzf /tmp/aarch64-musl.tgz -C /opt
+          echo "/opt/aarch64-linux-musl-cross/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          ARTIFACT=nanovps-agent-${TAG}-${{ matrix.arch }}
+          mkdir -p /tmp/${ARTIFACT}
+          cp target/${{ matrix.target }}/release/nanovps-agent /tmp/${ARTIFACT}/
+          cp config.example.json /tmp/${ARTIFACT}/config.json
+          tar -czf /tmp/${ARTIFACT}.tar.gz -C /tmp ${ARTIFACT}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nanovps-agent-${{ matrix.arch }}
+          path: /tmp/nanovps-agent-*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release create "${TAG}" /tmp/artifacts/*.tar.gz \
+            --title "NanoVPS Agent ${TAG}" \
+            --notes "## NanoVPS Agent ${TAG}
+
+          Rust-based VPS monitoring agent.
+
+          ### Download
+
+          | Architecture | File |
+          |---|---|
+          | x86_64 (amd64) | \`nanovps-agent-${TAG}-amd64.tar.gz\` |
+          | aarch64 (arm64) | \`nanovps-agent-${TAG}-arm64.tar.gz\` |
+
+          ### Quick Start
+
+          \`\`\`bash
+          # Download (example for amd64)
+          wget https://github.com/$(echo $GITHUB_REPOSITORY)/releases/download/${TAG}/nanovps-agent-${TAG}-amd64.tar.gz
+
+          # Extract
+          tar -xzf nanovps-agent-${TAG}-amd64.tar.gz
+
+          # Move to PATH
+          sudo mv nanovps-agent-${TAG}-amd64/nanovps-agent /usr/local/bin/
+
+          # Make executable
+          sudo chmod +x /usr/local/bin/nanovps-agent
+          \`\`\`
+
+          ### Configuration
+
+          Edit \`config.json\` in the working directory:
+
+          \`\`\`json
+          {
+            \"agentId\": \"your-agent-id\",
+            \"serverUrl\": \"ws://127.0.0.1:3000/ws\",
+            \"collectInterval\": \"10s\",
+            \"podmanSocket\": \"/run/podman/podman.sock\",
+            \"logMode\": \"console\",
+            \"logDir\": \"./logs\"
+          }
+          \`\`\`
+
+          | Field | Required | Default | Description |
+          |---|---|---|---|
+          | \`agentId\` | Yes | - | Agent identity issued by the server |
+          | \`serverUrl\` | No | \`ws://127.0.0.1:3000/ws\` | WebSocket server URL |
+          | \`collectInterval\` | No | \`10s\` | Metrics collection interval (10s-30s) |
+          | \`podmanSocket\` | No | \`/run/podman/podman.sock\` | Podman Unix socket path |
+          | \`logMode\` | No | \`console\` | Log mode (\`console\` or \`file\`) |
+          | \`logDir\` | No | \`./logs\` | Log directory (when logMode=file) |
+
+          ### Run
+
+          \`\`\`bash
+          # Edit config.json, then run
+          nanovps-agent
+          \`\`\`
+
+          ### Systemd Service (auto-start on boot)
+
+          Create \`/etc/systemd/system/nanovps-agent.service\`:
+
+          \`\`\`ini
+          [Unit]
+          Description=NanoVPS Agent
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          WorkingDirectory=/etc/nanovps-agent
+          ExecStart=/usr/local/bin/nanovps-agent
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          \`\`\`
+
+          \`\`\`bash
+          # Place config.json in /etc/nanovps-agent/
+          sudo mkdir -p /etc/nanovps-agent
+          sudo cp config.json /etc/nanovps-agent/
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable --now nanovps-agent
+          # View logs
+          journalctl -u nanovps-agent -f
+          \`\`\`"

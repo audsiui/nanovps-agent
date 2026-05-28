@@ -1,0 +1,8 @@
+{
+  "agentId": "your-agent-id",
+  "serverUrl": "ws://127.0.0.1:3000/ws",
+  "collectInterval": "10s",
+  "podmanSocket": "/run/podman/podman.sock",
+  "logMode": "console",
+  "logDir": "./logs"
+}

@@ -8,13 +8,19 @@ Rust rewrite of NanoVPS Agent.
 cargo build --release
 ```
 
-## Environment
+## Configuration
 
-```bash
-AGENT_ID=your-agent-id
-SERVER_URL=ws://127.0.0.1:3000/ws
-COLLECT_INTERVAL=10s
-PODMAN_SOCKET=/run/podman/podman.sock
-LOG_MODE=console
-LOG_DIR=./logs
+Create `config.json` in the working directory:
+
+```json
+{
+  "agentId": "your-agent-id",
+  "serverUrl": "ws://127.0.0.1:3000/ws",
+  "collectInterval": "10s",
+  "podmanSocket": "/run/podman/podman.sock",
+  "logMode": "console",
+  "logDir": "./logs"
+}
 ```
+
+`agentId` is required, all other fields are optional with the defaults shown above.

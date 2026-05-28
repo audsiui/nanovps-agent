@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use std::env;
-use std::io::{self, Write};
+use serde::Deserialize;
+use std::fs;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -12,30 +12,41 @@ pub struct Config {
     pub log_dir: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConfigFile {
+    agent_id: String,
+    #[serde(default)]
+    server_url: Option<String>,
+    #[serde(default)]
+    collect_interval: Option<String>,
+    #[serde(default)]
+    podman_socket: Option<String>,
+    #[serde(default)]
+    log_mode: Option<String>,
+    #[serde(default)]
+    log_dir: Option<String>,
+}
+
 impl Config {
     pub fn load() -> Result<Self> {
-        let agent_id = match env::var("AGENT_ID") {
-            Ok(id) if !id.trim().is_empty() => id.trim().to_string(),
-            _ => {
-                print!("Enter Agent ID: ");
-                io::stdout().flush()?;
-                let mut input = String::new();
-                io::stdin().read_line(&mut input)?;
-                let id = input.trim().to_string();
-                if id.is_empty() {
-                    bail!("AGENT_ID is not configured, agent exiting");
-                }
-                id
-            }
-        };
+        let text = fs::read_to_string("config.json")
+            .map_err(|e| anyhow::anyhow!("failed to read config.json: {e}"))?;
+        let file: ConfigFile = serde_json::from_str(&text)
+            .map_err(|e| anyhow::anyhow!("failed to parse config.json: {e}"))?;
+
+        let agent_id = file.agent_id.trim().to_string();
+        if agent_id.is_empty() {
+            bail!("agentId is required in config.json");
+        }
 
         Ok(Self {
-            server_url: env::var("SERVER_URL").unwrap_or_else(|_| "ws://127.0.0.1:3000/ws".to_string()),
             agent_id,
-            collect_interval_ms: parse_interval_ms(&env::var("COLLECT_INTERVAL").unwrap_or_else(|_| "10s".to_string())),
-            podman_socket: env::var("PODMAN_SOCKET").unwrap_or_else(|_| "/run/podman/podman.sock".to_string()),
-            log_mode: env::var("LOG_MODE").unwrap_or_else(|_| "console".to_string()),
-            log_dir: env::var("LOG_DIR").unwrap_or_else(|_| "./logs".to_string()),
+            server_url: file.server_url.unwrap_or_else(|| "ws://127.0.0.1:3000/ws".to_string()),
+            collect_interval_ms: parse_interval_ms(&file.collect_interval.unwrap_or_else(|| "10s".to_string())),
+            podman_socket: file.podman_socket.unwrap_or_else(|| "/run/podman/podman.sock".to_string()),
+            log_mode: file.log_mode.unwrap_or_else(|| "console".to_string()),
+            log_dir: file.log_dir.unwrap_or_else(|| "./logs".to_string()),
         })
     }
 }
@@ -56,4 +67,3 @@ fn parse_interval_ms(value: &str) -> u64 {
 
     ms.clamp(10_000, 30_000)
 }
-
