@@ -575,7 +575,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nanovps-agent-rs"
+name = "nanovps-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",

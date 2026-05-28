@@ -92,34 +92,46 @@ jobs:
             --title "NanoVPS Agent ${TAG}" \
             --notes "## NanoVPS Agent ${TAG}
 
-          Rust-based VPS monitoring agent.
+          基于 Rust 的 VPS 监控与管理 Agent。
 
-          ### Download
+          ### 下载
 
-          | Architecture | File |
+          | 架构 | 文件 |
           |---|---|
           | x86_64 (amd64) | \`nanovps-agent-${TAG}-amd64.tar.gz\` |
           | aarch64 (arm64) | \`nanovps-agent-${TAG}-arm64.tar.gz\` |
 
-          ### Quick Start
+          ### 一键部署安装（推荐）
+
+          在 Debian 13 VPS 上执行：
 
           \`\`\`bash
-          # Download (example for amd64)
-          wget https://github.com/$(echo $GITHUB_REPOSITORY)/releases/download/${TAG}/nanovps-agent-${TAG}-amd64.tar.gz
-
-          # Extract
-          tar -xzf nanovps-agent-${TAG}-amd64.tar.gz
-
-          # Move to PATH
-          sudo mv nanovps-agent-${TAG}-amd64/nanovps-agent /usr/local/bin/
-
-          # Make executable
-          sudo chmod +x /usr/local/bin/nanovps-agent
+          bash <(curl -fsSL https://raw.githubusercontent.com/audsiui/nanovps-agent/master/scripts/install.sh)
           \`\`\`
 
-          ### Configuration
+          安装向导会引导你逐步完成：安装 Podman → 准备 XFS 存储 → 迁移存储 → 创建容器网络 → 下载 Agent → 配置 Agent → 创建 systemd 服务。
 
-          Edit \`config.json\` in the working directory:
+          ### 手动安装
+
+          \`\`\`bash
+          # 下载（以 amd64 为例）
+          wget https://github.com/$(echo $GITHUB_REPOSITORY)/releases/download/${TAG}/nanovps-agent-${TAG}-amd64.tar.gz
+
+          # 解压
+          tar -xzf nanovps-agent-${TAG}-amd64.tar.gz
+
+          # 安装二进制
+          sudo cp nanovps-agent-${TAG}-amd64/nanovps-agent /usr/local/bin/
+          sudo chmod +x /usr/local/bin/nanovps-agent
+
+          # 安装配置
+          sudo mkdir -p /etc/nanovps-agent
+          sudo cp nanovps-agent-${TAG}-amd64/config.json /etc/nanovps-agent/
+          \`\`\`
+
+          ### 配置
+
+          编辑 \`/etc/nanovps-agent/config.json\`：
 
           \`\`\`json
           {
@@ -132,25 +144,16 @@ jobs:
           }
           \`\`\`
 
-          | Field | Required | Default | Description |
-          |---|---|---|
-          | \`agentId\` | Yes | - | Agent identity issued by the server |
-          | \`serverUrl\` | No | \`ws://127.0.0.1:3000/ws\` | WebSocket server URL |
-          | \`collectInterval\` | No | \`10s\` | Metrics collection interval (10s-30s) |
-          | \`podmanSocket\` | No | \`/run/podman/podman.sock\` | Podman Unix socket path |
-          | \`logMode\` | No | \`console\` | Log mode (\`console\` or \`file\`) |
-          | \`logDir\` | No | \`./logs\` | Log directory (when logMode=file) |
+          | 字段 | 必填 | 默认值 | 说明 |
+          |---|---|---|---|
+          | \`agentId\` | 是 | — | 服务端分配的 Agent 标识 |
+          | \`serverUrl\` | 否 | \`ws://127.0.0.1:3000/ws\` | WebSocket 服务端地址 |
+          | \`collectInterval\` | 否 | \`10s\` | 指标采集间隔（10s-30s） |
+          | \`podmanSocket\` | 否 | \`/run/podman/podman.sock\` | Podman Unix socket 路径 |
+          | \`logMode\` | 否 | \`console\` | 日志模式（\`console\` 或 \`file\`） |
+          | \`logDir\` | 否 | \`./logs\` | 日志目录（logMode=file 时生效） |
 
-          ### Run
-
-          \`\`\`bash
-          # Edit config.json, then run
-          nanovps-agent
-          \`\`\`
-
-          ### Systemd Service (auto-start on boot)
-
-          Create \`/etc/systemd/system/nanovps-agent.service\`:
+          ### systemd 服务（开机自启）
 
           \`\`\`ini
           [Unit]
@@ -170,12 +173,9 @@ jobs:
           \`\`\`
 
           \`\`\`bash
-          # Place config.json in /etc/nanovps-agent/
-          sudo mkdir -p /etc/nanovps-agent
-          sudo cp config.json /etc/nanovps-agent/
-
           sudo systemctl daemon-reload
           sudo systemctl enable --now nanovps-agent
-          # View logs
-          journalctl -u nanovps-agent -f
-          \`\`\`"
+          journalctl -u nanovps-agent -f  # 查看日志
+          \`\`\`
+
+          更多详情请参考 [README](https://github.com/$(echo $GITHUB_REPOSITORY)#readme)。"
