@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
     tokio::spawn(transport::ws_client::run(
         config.server_url.clone(),
         config.agent_id.clone(),
+        config.agent_token.clone(),
         outbound_rx,
         inbound_tx,
     ));
@@ -37,9 +38,13 @@ async fn main() -> Result<()> {
     let command_outbound = outbound_tx.clone();
     tokio::spawn(async move {
         while let Some(message) = inbound_rx.recv().await {
-            let ServerMessage::Cmd(command) = message;
-            let response = command::handle_command(&command_podman, command).await;
-            let _ = command_outbound.send(ClientMessage::Response(response)).await;
+            match message {
+                ServerMessage::Cmd(command) => {
+                    let response = command::handle_command(&command_podman, command).await;
+                    let _ = command_outbound.send(ClientMessage::Response(response)).await;
+                }
+                ServerMessage::Auth(_) => {}
+            }
         }
     });
 

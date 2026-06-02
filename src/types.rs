@@ -104,10 +104,20 @@ pub struct CommandResponsePayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthResult {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
     #[serde(rename = "cmd")]
     Cmd(ServerCommand),
+    #[serde(rename = "auth")]
+    Auth(AuthResult),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -6,6 +6,7 @@ use std::fs;
 pub struct Config {
     pub server_url: String,
     pub agent_id: String,
+    pub agent_token: String,
     pub collect_interval_ms: u64,
     pub podman_socket: String,
     pub log_mode: String,
@@ -16,6 +17,8 @@ pub struct Config {
 #[serde(rename_all = "camelCase")]
 struct ConfigFile {
     agent_id: String,
+    #[serde(default)]
+    agent_token: Option<String>,
     #[serde(default)]
     server_url: Option<String>,
     #[serde(default)]
@@ -40,9 +43,15 @@ impl Config {
             bail!("agentId is required in config.json");
         }
 
+        let agent_token = file.agent_token.unwrap_or_default().trim().to_string();
+        if agent_token.is_empty() {
+            bail!("agentToken is required in config.json");
+        }
+
         Ok(Self {
             agent_id,
-            server_url: file.server_url.unwrap_or_else(|| "ws://127.0.0.1:3000/ws".to_string()),
+            agent_token,
+            server_url: file.server_url.unwrap_or_else(|| "ws://127.0.0.1:3000/ws/agent".to_string()),
             collect_interval_ms: parse_interval_ms(&file.collect_interval.unwrap_or_else(|| "10s".to_string())),
             podman_socket: file.podman_socket.unwrap_or_else(|| "/run/podman/podman.sock".to_string()),
             log_mode: file.log_mode.unwrap_or_else(|| "console".to_string()),
