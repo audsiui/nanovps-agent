@@ -36,40 +36,115 @@ struct CreateResponse {
 
 impl PodmanClient {
     pub async fn restart_container(&self, id: &str) -> Result<()> {
-        self.container_action(id, "restart").await
+        tracing::info!(container_id = %id, "podman: restart container");
+        match self.container_action(id, "restart").await {
+            Ok(()) => {
+                tracing::info!(container_id = %id, "podman: restart container ok");
+                Ok(())
+            }
+            Err(error) => {
+                tracing::warn!(container_id = %id, %error, "podman: restart container failed");
+                Err(error)
+            }
+        }
     }
 
     pub async fn stop_container(&self, id: &str) -> Result<()> {
-        self.container_action(id, "stop").await
+        tracing::info!(container_id = %id, "podman: stop container");
+        match self.container_action(id, "stop").await {
+            Ok(()) => {
+                tracing::info!(container_id = %id, "podman: stop container ok");
+                Ok(())
+            }
+            Err(error) => {
+                tracing::warn!(container_id = %id, %error, "podman: stop container failed");
+                Err(error)
+            }
+        }
     }
 
     pub async fn start_container(&self, id: &str) -> Result<()> {
-        self.container_action(id, "start").await
+        tracing::info!(container_id = %id, "podman: start container");
+        match self.container_action(id, "start").await {
+            Ok(()) => {
+                tracing::info!(container_id = %id, "podman: start container ok");
+                Ok(())
+            }
+            Err(error) => {
+                tracing::warn!(container_id = %id, %error, "podman: start container failed");
+                Err(error)
+            }
+        }
     }
 
     pub async fn remove_container(&self, id: &str, force: bool) -> Result<()> {
+        tracing::info!(container_id = %id, force, "podman: remove container");
         let path = if force {
             format!("/containers/{id}?force=true")
         } else {
             format!("/containers/{id}")
         };
-        self.delete(&path).await?;
-        Ok(())
+        match self.delete(&path).await {
+            Ok(_) => {
+                tracing::info!(container_id = %id, force, "podman: remove container ok");
+                Ok(())
+            }
+            Err(error) => {
+                tracing::warn!(container_id = %id, force, %error, "podman: remove container failed");
+                Err(error)
+            }
+        }
     }
 
     pub async fn create_container(&self, options: CreateContainerOptions) -> Result<CreateContainerResult> {
+        tracing::info!(
+            name = %options.name,
+            image = %options.image,
+            network = ?options.network,
+            "podman: create container"
+        );
         let config = build_container_config(&options);
         let create = self.create_container_once(&config).await;
         let container_id = match create {
             Ok(id) => id,
             Err(error) if error.to_string().contains("status 404") => {
+                tracing::info!(
+                    name = %options.name,
+                    image = %options.image,
+                    "podman: image missing, fallback to pull"
+                );
                 self.pull_image(&options.image).await?;
                 wait_for_image(self, &options.image).await?;
-                self.create_container_once(&config).await?
+                match self.create_container_once(&config).await {
+                    Ok(id) => id,
+                    Err(error) => {
+                        tracing::warn!(
+                            name = %options.name,
+                            image = %options.image,
+                            %error,
+                            "podman: create container failed after pull"
+                        );
+                        return Err(error);
+                    }
+                }
             }
-            Err(error) => return Err(error),
+            Err(error) => {
+                tracing::warn!(
+                    name = %options.name,
+                    image = %options.image,
+                    %error,
+                    "podman: create container failed"
+                );
+                return Err(error);
+            }
         };
 
+        tracing::info!(
+            container_id = %container_id,
+            name = %options.name,
+            image = %options.image,
+            "podman: container created, starting"
+        );
         self.start_container(&container_id).await?;
 
         Ok(CreateContainerResult {
@@ -150,12 +225,15 @@ fn build_container_config(options: &CreateContainerOptions) -> Value {
 }
 
 async fn wait_for_image(client: &PodmanClient, image: &str) -> Result<()> {
-    for _ in 0..10 {
+    for attempt in 0..10 {
         if client.image_exists(image).await? {
+            tracing::debug!(image, attempt, "podman: image ready after pull");
             return Ok(());
         }
+        tracing::debug!(image, attempt, "podman: image not ready yet, sleeping 1s");
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 
+    tracing::warn!(image, "podman: image pulled but still not available after 10 attempts");
     Err(anyhow!("image {image} pulled but not available after waiting"))
 }

@@ -85,19 +85,45 @@ enum StatsValue {
 
 impl PodmanClient {
     pub async fn container_list(&self) -> Result<Vec<PodmanContainerSummary>> {
-        self.get_json("/containers/json?all=true").await
+        tracing::debug!("podman: list containers (all=true)");
+        match self.get_json::<Vec<PodmanContainerSummary>>("/containers/json?all=true").await {
+            Ok(list) => {
+                tracing::debug!(count = list.len(), "podman: list containers ok");
+                Ok(list)
+            }
+            Err(error) => {
+                tracing::warn!(%error, "podman: list containers failed");
+                Err(error)
+            }
+        }
     }
 
     pub async fn container_stats_raw(&self, id: &str) -> Result<Vec<PodmanStatsEntry>> {
-        let response: StatsResponse = self.get_json(&format!("/containers/{id}/stats?stream=false")).await?;
-        Ok(match response {
+        tracing::debug!(container_id = %id, "podman: fetch container stats");
+        let response: StatsResponse = match self
+            .get_json(&format!("/containers/{id}/stats?stream=false"))
+            .await
+        {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::warn!(container_id = %id, %error, "podman: fetch container stats failed");
+                return Err(error);
+            }
+        };
+        let entries = match response {
             StatsResponse::List(items) => items,
             StatsResponse::Object { stats } => match stats {
                 StatsValue::List(items) => items,
                 StatsValue::Map(map) => map.into_values().collect(),
             },
             StatsResponse::Entry(entry) => vec![entry],
-        })
+        };
+        tracing::debug!(
+            container_id = %id,
+            entries = entries.len(),
+            "podman: container stats ok"
+        );
+        Ok(entries)
     }
 }
 

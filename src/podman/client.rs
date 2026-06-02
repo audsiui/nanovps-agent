@@ -69,11 +69,32 @@ impl PodmanClient {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::UnixStream;
 
-        let mut stream = UnixStream::connect(&self.socket_path).await?;
         let api_path = self.api_path(path);
         let body = match body {
             Some(value) => serde_json::to_vec(value)?,
             None => Vec::new(),
+        };
+
+        tracing::debug!(
+            method,
+            path = %api_path,
+            socket = %self.socket_path.display(),
+            body_len = body.len(),
+            "podman http -> request"
+        );
+
+        let mut stream = match UnixStream::connect(&self.socket_path).await {
+            Ok(stream) => stream,
+            Err(error) => {
+                tracing::warn!(
+                    method,
+                    path = %api_path,
+                    socket = %self.socket_path.display(),
+                    %error,
+                    "podman http: connect to socket failed"
+                );
+                return Err(error.into());
+            }
         };
 
         let mut request = format!(
@@ -85,14 +106,43 @@ impl PodmanClient {
         }
         request.push_str("\r\n");
 
-        stream.write_all(request.as_bytes()).await?;
+        if let Err(error) = stream.write_all(request.as_bytes()).await {
+            tracing::warn!(method, path = %api_path, %error, "podman http: write headers failed");
+            return Err(error.into());
+        }
         if !body.is_empty() {
-            stream.write_all(&body).await?;
+            if let Err(error) = stream.write_all(&body).await {
+                tracing::warn!(method, path = %api_path, %error, "podman http: write body failed");
+                return Err(error.into());
+            }
         }
 
         let mut response = Vec::new();
-        stream.read_to_end(&mut response).await?;
-        parse_http_response(&response)
+        if let Err(error) = stream.read_to_end(&mut response).await {
+            tracing::warn!(method, path = %api_path, %error, "podman http: read response failed");
+            return Err(error.into());
+        }
+
+        match parse_http_response(&response) {
+            Ok(payload) => {
+                tracing::debug!(
+                    method,
+                    path = %api_path,
+                    resp_len = payload.len(),
+                    "podman http <- response ok"
+                );
+                Ok(payload)
+            }
+            Err(error) => {
+                tracing::debug!(
+                    method,
+                    path = %api_path,
+                    %error,
+                    "podman http <- response error"
+                );
+                Err(error)
+            }
+        }
     }
 }
 
