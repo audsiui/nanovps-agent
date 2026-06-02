@@ -14,7 +14,6 @@ pub struct CreateContainerOptions {
     pub storage_opt: Option<String>,
     pub cpus: Option<f64>,
     pub pids_limit: Option<i64>,
-    pub ssh_port: Option<u16>,
     pub network: Option<String>,
     pub ip: Option<String>,
     pub ip6: Option<String>,
@@ -124,14 +123,6 @@ fn build_container_config(options: &CreateContainerOptions) -> Value {
     }
     if !resources.is_empty() {
         config["resource_limits"] = Value::Object(resources);
-    }
-
-    if let Some(ssh_port) = options.ssh_port {
-        config["portmappings"] = json!([{
-            "host_port": ssh_port,
-            "container_port": 22,
-            "protocol": "tcp"
-        }]);
     }
 
     if let Some(network) = &options.network {
