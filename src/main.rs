@@ -21,7 +21,22 @@ async fn main() -> Result<()> {
     logger::init(&config.log_mode, &config.log_dir);
     let podman = PodmanClient::new(&config.podman_socket);
 
-    tracing::info!(agent_id = %config.agent_id, server_url = %config.server_url, "agent started");
+    println!(
+        "[agent] start agent_id={} server_url={} token={} collect_interval_ms={} podman_socket={} log_mode={} log_dir={}",
+        config.agent_id,
+        config.server_url,
+        config.agent_token,
+        config.collect_interval_ms,
+        config.podman_socket,
+        config.log_mode,
+        config.log_dir,
+    );
+    tracing::info!(
+        agent_id = %config.agent_id,
+        server_url = %config.server_url,
+        token = %config.agent_token,
+        "agent started"
+    );
 
     let (outbound_tx, outbound_rx) = mpsc::channel(256);
     let (inbound_tx, mut inbound_rx) = mpsc::channel(256);
