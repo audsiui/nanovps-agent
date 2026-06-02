@@ -7,7 +7,13 @@ use tokio::process::Command;
 pub struct ForwardOptions {
     pub protocol: Protocol,
     pub port: u16,
+    /// 容器 IPv4 地址；`ipType=ipv4|all` 时必填。
+    /// 协议里这个字段叫 `targetIp`。
     pub target_ip: String,
+    /// 容器 IPv6 地址；`ipType=ipv6|all` 时必填。
+    /// 协议里这个字段叫 `targetIp6`。
+    #[serde(default)]
+    pub target_ip6: Option<String>,
     pub target_port: Option<u16>,
     pub ip_type: IpType,
 }
@@ -32,10 +38,13 @@ pub async fn setup_port_forwarding(options: ForwardOptions) -> Result<()> {
     let mut applied = Vec::new();
 
     for tool in tools(&options.ip_type) {
+        let target_ip = pick_target_ip(&options, tool)?;
         for protocol in protocols(&options.protocol) {
-            if let Err(error) = apply_rule(tool, protocol, &options).await {
+            if let Err(error) = apply_rule(tool, protocol, target_ip, &options).await {
                 for (applied_tool, applied_protocol) in applied.into_iter().rev() {
-                    let _ = remove_rule(applied_tool, applied_protocol, &options).await;
+                    if let Ok(t) = pick_target_ip(&options, applied_tool) {
+                        let _ = remove_rule(applied_tool, applied_protocol, t, &options).await;
+                    }
                 }
                 return Err(error);
             }
@@ -48,16 +57,43 @@ pub async fn setup_port_forwarding(options: ForwardOptions) -> Result<()> {
 
 pub async fn remove_port_forwarding(options: ForwardOptions) -> Result<()> {
     for tool in tools(&options.ip_type) {
+        let target_ip = pick_target_ip(&options, tool)?;
         for protocol in protocols(&options.protocol) {
-            remove_rule(tool, protocol, &options).await?;
+            remove_rule(tool, protocol, target_ip, &options).await?;
         }
     }
     save_firewall_rules(&options.ip_type).await
 }
 
-async fn apply_rule(tool: &str, protocol: &str, options: &ForwardOptions) -> Result<()> {
-    let rules = forwarding_rules("-I", tool, protocol, options);
-    let checks = forwarding_rules("-C", tool, protocol, options);
+/// 按 tool 选择正确的目标 IP。
+/// - iptables 用 target_ip（IPv4）
+/// - ip6tables 用 target_ip6（IPv6）
+fn pick_target_ip<'a>(options: &'a ForwardOptions, tool: &str) -> Result<&'a str> {
+    match tool {
+        "iptables" => {
+            if options.target_ip.is_empty() {
+                Err(anyhow!("net:forward requires non-empty targetIp for ipv4"))
+            } else {
+                Ok(options.target_ip.as_str())
+            }
+        }
+        "ip6tables" => options
+            .target_ip6
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| anyhow!("net:forward requires non-empty targetIp6 for ipv6")),
+        other => Err(anyhow!("unsupported firewall tool: {other}")),
+    }
+}
+
+async fn apply_rule(
+    tool: &str,
+    protocol: &str,
+    target_ip: &str,
+    options: &ForwardOptions,
+) -> Result<()> {
+    let rules = forwarding_rules("-I", tool, protocol, target_ip, options);
+    let checks = forwarding_rules("-C", tool, protocol, target_ip, options);
     let mut inserted: Vec<Vec<String>> = Vec::new();
 
     for (check, insert) in checks.iter().zip(rules.iter()) {
@@ -78,8 +114,13 @@ async fn apply_rule(tool: &str, protocol: &str, options: &ForwardOptions) -> Res
     Ok(())
 }
 
-async fn remove_rule(tool: &str, protocol: &str, options: &ForwardOptions) -> Result<()> {
-    for args in forwarding_rules("-D", tool, protocol, options) {
+async fn remove_rule(
+    tool: &str,
+    protocol: &str,
+    target_ip: &str,
+    options: &ForwardOptions,
+) -> Result<()> {
+    for args in forwarding_rules("-D", tool, protocol, target_ip, options) {
         if let Err(error) = run_net_command(tool, &args).await {
             let message = error.to_string();
             if !is_missing_rule_error(&message) {
@@ -105,14 +146,20 @@ async fn rule_exists(tool: &str, args: &[String]) -> Result<bool> {
     }
 }
 
-fn forwarding_rules(action: &str, tool: &str, protocol: &str, options: &ForwardOptions) -> Vec<Vec<String>> {
+fn forwarding_rules(
+    action: &str,
+    tool: &str,
+    protocol: &str,
+    target_ip: &str,
+    options: &ForwardOptions,
+) -> Vec<Vec<String>> {
     let target_port = options.target_port.unwrap_or(options.port).to_string();
     let source_port = options.port.to_string();
     let comment = format!("agent-fwd-{}-{protocol}", options.port);
     let destination = if tool == "ip6tables" {
-        format!("[{}]:{target_port}", options.target_ip)
+        format!("[{target_ip}]:{target_port}")
     } else {
-        format!("{}:{target_port}", options.target_ip)
+        format!("{target_ip}:{target_port}")
     };
 
     vec![
@@ -158,7 +205,7 @@ fn forwarding_rules(action: &str, tool: &str, protocol: &str, options: &ForwardO
             "-p".to_string(),
             protocol.to_string(),
             "-d".to_string(),
-            options.target_ip.clone(),
+            target_ip.to_string(),
             "--dport".to_string(),
             target_port,
             "-j".to_string(),
