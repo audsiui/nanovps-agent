@@ -1,6 +1,6 @@
 #!/bin/bash
 # NanoVPS Agent 半自动化安装脚本
-# Debian 13 专用
+# 通用 Linux 发行版（脚本内 apt 命令要求 apt 包管理器）
 # 支持 curl | bash 方式执行
 
 set -e
@@ -39,7 +39,7 @@ echo ""
 # 下载所有脚本
 echo "正在下载安装脚本..."
 SCRIPTS=(
-    "install-podman.sh"
+    "install-podman-generic.sh"
     "check-podman-autostart.sh"
     "verify-podman.sh"
     "setup-xfs-storage.sh"
@@ -72,7 +72,7 @@ echo ""
 echo "此脚本将一步步引导您完成安装"
 echo "每完成一步，您需要确认后才继续下一步"
 echo ""
-echo "系统要求: Debian 13"
+echo "系统要求: Debian 11+/Ubuntu 22.04+（需 apt 包管理器）"
 echo ""
 read -p "按回车键开始安装..." < /dev/tty
 echo ""
@@ -136,8 +136,8 @@ run_step() {
 # 步骤 1: 安装 Podman
 run_step \
     "安装 Podman" \
-    "安装 Podman 容器引擎（无根模式支持）" \
-    "install-podman.sh"
+    "自动检测发行版并安装 Podman 5+（静态二进制兜底）" \
+    "install-podman-generic.sh"
 
 # 步骤 2: 验证 Podman
 run_step \
